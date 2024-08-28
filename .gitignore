@@ -1,0 +1,6 @@
+*.json
+*.yaml
+.idea/*
+*/__pycache__/*
+*.pth
+*.config
