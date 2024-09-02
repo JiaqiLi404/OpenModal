@@ -7,7 +7,10 @@ OpenModal is a foundational library for training multi-modal models based on PyT
 - **Flexibility**: Due to the variety of multi-modal tasks, the library provides a flexible way to define the components and the flow of the project.
 - **Standardized**: We recommend a standardized way to define the formal object-oriented model inputs and outputs, which could help others to easily understand and utilize the model.
 
-## Supporting modules:
+## Supported Models:
+- [ ] [MeloTTS](https://github.com/myshell-ai/MeloTTS) TTS Model
+
+## Supporting Customizing Modules:
 - **flow**: Here you could define the flow of the project, i.e. including data loading, preprocessing, augmentation, inferencing, etc.
 - **model**: Here you could define the model architecture.
 - **block**: Here you could define the building blocks of the model.
