@@ -82,6 +82,8 @@ FlowBase = Registry("flow", parent=MainBase)
 
 ModelBase = Registry("model", parent=MainBase)
 
+ModuleBase=Registry("module",parent=MainBase)
+
 BlockBase = Registry("block", parent=MainBase)
 
 MetricBase = Registry("metric", parent=MainBase)

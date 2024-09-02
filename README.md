@@ -1,10 +1,11 @@
+# OpenModal
 ## Introduction
 
 OpenModal is a foundational library for training multi-modal models based on PyTorch. The highlights are:
-- **Registry**: The library provides a registry mechanism to manage the components, such as models, datasets, metrics, etc.
-- **Modular Design**: The library is designed in a modular way, which allows you to easily customize the components.
-- **Configuration**: The library supports configuration files in yaml and json formats, which allows you to easily manage the hyperparameters during your experiments.
-
+- **Modular Design**: The library is designed in a modular way, which allows you to easily add and customize the components, just by registering them in the module registry.
+- **Configuration**: The library supports configuration files in yaml and json formats, which allows you to easily assemble different models and manage the hyperparameters during your experiments.
+- **Flexibility**: Due to the variety of multi-modal tasks, the library provides a flexible way to define the components and the flow of the project.
+- **Standardized**: We recommend a standardized way to define the formal object-oriented model inputs and outputs, which could help others to easily understand and utilize the model.
 
 ## Supporting modules:
 - **flow**: Here you could define the flow of the project, i.e. including data loading, preprocessing, augmentation, inferencing, etc.
@@ -38,7 +39,7 @@ e.g.:
 ```yaml
 flow:
   type: "BaseFlow"
-  input: "{{model}}"
+  model: "{{model}}"
 model:
   order: -1
   type: "ResNet"
@@ -56,4 +57,25 @@ model:
   type: "ResNet"
   num_classes: "{{num_classes}}"
   depth: 18
+```
+A flow is necessary for the project, which defines the flow of the project, including data loading, preprocessing, augmentation, inferencing, etc.
+A correct configuration should define the necessary modules first, and include the `flow` item to control the data flow between the models.
+e.g.:
+```yaml
+depth: 18
+num_classes: 10
+model:
+  type: "ResNet"
+  num_classes: "{{num_classes}}"
+  depth: "{{depth}}"
+image_loader:
+  type: "ImageLoader"
+  root: "data\image"
+flow:
+  type: "BaseFlow"
+  model: "{{model}}"
+  audio_loader:
+    type: "AudioLoader"
+    root: "data\audio"
+  image_loader: "{{image_loader}}"
 ```

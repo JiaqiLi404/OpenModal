@@ -2,41 +2,11 @@ from typing import Dict, Any, Callable
 import copy
 import re
 from tqdm import tqdm
+import argparse
 
 from openmodal.engine import Config
 from openmodal.engine import Registry, MainBase, FlowBase, ModelBase, BlockBase, MetricBase, DatasetBase, ProcessBase, \
     PreProcessBase, ViewBase, VisualizationBase
-
-config = Config.fromfile('config/example.yaml')
-
-# sort the modules if possible
-pre_modules = []
-runtime_modules = []
-post_modules = []
-for key, value in config.items():
-    if isinstance(value, dict) and "order" in value:
-        if value["order"] < 0:
-            pre_modules.append(key)
-        else:
-            post_modules.append(key)
-    else:
-        runtime_modules.append(key)
-pre_modules.sort(key=lambda x: config[x]["order"])
-post_modules.sort(key=lambda x: config[x]["order"])
-
-# print the modules in order
-print("Your Configurations:")
-for module in pre_modules:
-    print(f"{module}: {config[module]}")
-for module in runtime_modules:
-    print(f"{module}: {config[module]}")
-for module in post_modules:
-    print(f"{module}: {config[module]}")
-print("\n\n")
-
-# build the modules
-global_built_modules = {}
-
 
 def build_module(name: str, cfg: Any, outer_built_modules: Dict[str, Any]) -> Any:
     """
@@ -75,21 +45,56 @@ def build_module(name: str, cfg: Any, outer_built_modules: Dict[str, Any]) -> An
     outer_built_modules[name] = module
     return cfg
 
+if __name__ == "__main__":
+    arg_parser=argparse.ArgumentParser()
+    arg_parser.add_argument("--config", type=str, default="config/example.yaml")
+    args=arg_parser.parse_args()
 
-print("Your Final Configurations:")
-for name in tqdm(pre_modules, desc="Building pre-modules"):
-    cfg = config[name]
-    cfg = build_module(name, cfg, global_built_modules)
-    print(f"{name}: {cfg}")
-for name in tqdm(runtime_modules, desc="Building runtime-modules"):
-    cfg = config[name]
-    cfg = build_module(name, cfg, global_built_modules)
-    print(f"{name}: {cfg}")
-for name in tqdm(post_modules, desc="Building post_modules"):
-    cfg = config[name]
-    cfg = build_module(name, cfg, global_built_modules)
-    print(f"{name}: {cfg}")
-print("\n\n")
+    # load the configuration
+    config = Config.fromfile('config/example.yaml')
 
-flow = global_built_modules["flow"]
-flow.forward()
+    # sort the modules if possible
+    pre_modules = []
+    runtime_modules = []
+    post_modules = []
+    for key, value in config.items():
+        if isinstance(value, dict) and "order" in value:
+            if value["order"] < 0:
+                pre_modules.append(key)
+            else:
+                post_modules.append(key)
+        else:
+            runtime_modules.append(key)
+    pre_modules.sort(key=lambda x: config[x]["order"])
+    post_modules.sort(key=lambda x: config[x]["order"])
+
+    # print the modules in order
+    print("Your Variable Configurations:")
+    for module in pre_modules:
+        print(f"{module}: {config[module]}")
+    for module in runtime_modules:
+        print(f"{module}: {config[module]}")
+    for module in post_modules:
+        print(f"{module}: {config[module]}")
+    print("\n\n")
+
+    # build the modules
+    global_built_modules = {}
+
+    print("Your Final Configurations:")
+    for name in tqdm(pre_modules, desc="Building pre-modules"):
+        cfg = config[name]
+        cfg = build_module(name, cfg, global_built_modules)
+        print(f"{name}: {cfg}")
+    for name in tqdm(runtime_modules, desc="Building runtime-modules"):
+        cfg = config[name]
+        cfg = build_module(name, cfg, global_built_modules)
+        print(f"{name}: {cfg}")
+    for name in tqdm(post_modules, desc="Building post_modules"):
+        cfg = config[name]
+        cfg = build_module(name, cfg, global_built_modules)
+        print(f"{name}: {cfg}")
+    print("\n\n")
+
+    flow = global_built_modules["flow"]
+    flow.forward()
