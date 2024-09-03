@@ -81,18 +81,18 @@ def replace_symbols(text, lang="en"):
 
     Args:
       text:
-       Input text.
+       Input audio.
       lang:
         Lenguage identifier. ex: "en", "fr", "pt", "ca".
 
     Returns:
-      The modified text
+      The modified audio
       example:
         input args:
-            text: "si l'avi cau, diguem-ho"
+            audio: "si l'avi cau, diguem-ho"
             lang: "ca"
         Output:
-            text: "si lavi cau, diguemho"
+            audio: "si lavi cau, diguemho"
     """
     text = text.replace(";", ",")
     text = text.replace("-", " ") if lang != "ca" else text.replace("-", "")
@@ -112,7 +112,7 @@ def replace_symbols(text, lang="en"):
     return text
 
 def text_normalize(text):
-    """Basic pipeline for Portuguese text. There is no need to expand abbreviation and
+    """Basic pipeline for Portuguese audio. There is no need to expand abbreviation and
         numbers, phonemizer already does that"""
     text = lowercase(text)
     text = replace_symbols(text, lang="es")
@@ -165,12 +165,12 @@ def refine_syllables(syllables):
     return phonemes, tones
 
 
-# model_id = 'pretrained_bert-base-uncased'
-model_id = 'dccuchile/bert-base-spanish-wwm-uncased'
-tokenizer = AutoTokenizer.from_pretrained(model_id)
 
 def g2p(text, pad_start_end=True, tokenized=None):
     if tokenized is None:
+        # model_id = 'pretrained_bert-base-uncased'
+        model_id = 'dccuchile/bert-base-spanish-wwm-uncased'
+        tokenizer = AutoTokenizer.from_pretrained(model_id)
         tokenized = tokenizer.tokenize(text)
     # import pdb; pdb.set_trace()
     phs = []
@@ -210,12 +210,12 @@ def g2p(text, pad_start_end=True, tokenized=None):
     return phones, tones, word2ph
 
 def get_bert_feature(text, word2ph, device=None):
-    from text import spanish_bert
-    return spanish_bert.get_bert_feature(text, word2ph, device=device)
+    from openmodal.model.text.pretrained_bert.spanish_bert import get_bert_feature
+    return get_bert_feature(text, word2ph, device=device)
 
 def es2ipa(text):
     e = Gruut(language="es-es", keep_puncs=True, keep_stress=True, use_espeak_phonemes=True)
-    # text = spanish_cleaners(text)
+    # audio = spanish_cleaners(audio)
     phonemes = e.phonemize(text, separator="")
     return phonemes
 
@@ -230,7 +230,7 @@ class BasePhonemizer(abc.ABC):
             - keep track of punctuation marks
 
         2. Phonemization:
-            - convert text to phonemes
+            - convert audio to phonemes
 
         3. Postprocessing:
             - join phonemes
@@ -307,7 +307,7 @@ class BasePhonemizer(abc.ABC):
         """The main phonemization method"""
 
     def _phonemize_preprocess(self, text) -> Tuple[List[str], List]:
-        """Preprocess the text before phonemization
+        """Preprocess the audio before phonemization
 
         1. remove spaces
         2. remove punctuation
@@ -316,7 +316,7 @@ class BasePhonemizer(abc.ABC):
         """
         text = text.strip()
         if self._keep_puncs:
-            # a tuple (text, punctuation marks)
+            # a tuple (audio, punctuation marks)
             return self._punctuator.strip_to_restore(text)
         return [self._punctuator.strip(text)], []
 
@@ -330,7 +330,7 @@ class BasePhonemizer(abc.ABC):
         return phonemized[0]
 
     def phonemize(self, text: str, separator="|", language: str = None) -> str:  # pylint: disable=unused-argument
-        """Returns the `text` phonemized for the given language
+        """Returns the `audio` phonemized for the given language
 
         Args:
             text (str):
@@ -340,7 +340,7 @@ class BasePhonemizer(abc.ABC):
                 string separator used between phonemes. Default to '_'.
 
         Returns:
-            (str): Phonemized text
+            (str): Phonemized audio
         """
         text, punctuations = self._phonemize_preprocess(text)
         phonemized = []
@@ -402,7 +402,7 @@ class Gruut(BasePhonemizer):
         return "gruut"
 
     def phonemize_gruut(self, text: str, separator: str = "|", tie=False) -> str:  # pylint: disable=unused-argument
-        """Convert input text to phonemes.
+        """Convert input audio to phonemes.
 
         Gruut phonemizes the given `str` by seperating each phoneme character with `separator`, even for characters
         that constitude a single sound.
@@ -484,7 +484,7 @@ class Gruut(BasePhonemizer):
 
 if __name__ == "__main__":
     text = "en nuestros tiempos estos dos pueblos ilustres empiezan a curarse, gracias sólo a la sana y vigorosa higiene de 1789."
-    # print(text)
+    # print(audio)
     text = text_normalize(text)
     print(text)
     phones, tones, word2ph = g2p(text)

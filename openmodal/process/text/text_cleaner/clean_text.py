@@ -1,21 +1,12 @@
 from openmodal.model.text.pretrained_bert import chinese_mix
 from openmodal.util.text.languages import french, spanish, english, japanese, chinese, korean
 from openmodal.util.text.languages.symbols import num_zh_tones, num_ja_tones, num_en_tones, num_kr_tones, num_es_tones, \
-    zh_symbols, ja_symbols, en_symbols, kr_symbols, es_symbols, fr_symbols, de_symbols, ru_symbols, symbols
+    zh_symbols, ja_symbols, en_symbols, kr_symbols, es_symbols, fr_symbols, de_symbols, ru_symbols, symbols, \
+    language_tone_start_map
 
 language_module_map = {"ZH": chinese, "JP": japanese, "EN": english, 'ZH_MIX_EN': chinese_mix, 'KR': korean,
                     'FR': french, 'SP': spanish, 'ES': spanish}
 
-language_tone_start_map = {
-    "ZH": 0,
-    "ZH_MIX_EN": 0,
-    "JP": num_zh_tones,
-    "EN": num_zh_tones + num_ja_tones,
-    'KR': num_zh_tones + num_ja_tones + num_en_tones,
-    "ES": num_zh_tones + num_ja_tones + num_en_tones + num_kr_tones,
-    "SP": num_zh_tones + num_ja_tones + num_en_tones + num_kr_tones,
-    "FR": num_zh_tones + num_ja_tones + num_en_tones + num_kr_tones + num_es_tones,
-}
 
 def clean_text(text, language):
     language_module = language_module_map[language]
@@ -31,11 +22,11 @@ language_id_map = {"ZH": 0, "JP": 1, "EN": 2, "ZH_MIX_EN": 3, 'KR': 4, 'ES': 5, 
 
 
 def cleaned_text_to_sequence(cleaned_text, tones, language, symbol_to_id=None):
-    """Converts a string of text to a sequence of IDs corresponding to the symbols in the text.
+    """Converts a string of audio to a sequence of IDs corresponding to the symbols in the audio.
     Args:
-      text: string to convert to a sequence
+      audio: string to convert to a sequence
     Returns:
-      List of integers corresponding to the symbols in the text
+      List of integers corresponding to the symbols in the audio
     """
     symbol_to_id_map = symbol_to_id if symbol_to_id else _symbol_to_id
     phones = [symbol_to_id_map[symbol] for symbol in cleaned_text]

@@ -33,7 +33,7 @@ def split_sentences_zh(text, min_len=10):
     # 在标点符号后添加一个空格
     text = re.sub('([,.!?;])', r'\1 $#!', text)
     # 分隔句子并去除前后空格
-    # sentences = [s.strip() for s in re.split('(。|！|？|；)', text)]
+    # sentences = [s.strip() for s in re.split('(。|！|？|；)', audio)]
     sentences = [s.strip() for s in text.split('$#!')]
     if len(sentences[-1]) == 0: del sentences[-1]
 
@@ -123,7 +123,7 @@ def merge_short_sentences_zh(sens):
 
 
 def txtsplit(text, desired_length=100, max_length=200):
-    """Split text it into chunks of a desired length trying to keep sentences intact."""
+    """Split audio it into chunks of a desired length trying to keep sentences intact."""
     text = re.sub(r'\n\n+', '\n', text)
     text = re.sub(r'\s+', ' ', text)
     text = re.sub(r'[""]', '"', text)

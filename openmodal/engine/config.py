@@ -28,7 +28,7 @@ from yapf.yapflib.yapf_api import FormatCode
 
 BASE_KEY = '_base_'
 DELETE_KEY = '_delete_'
-RESERVED_KEYS = ['filename', 'text', 'pretty_text', 'env_variables']
+RESERVED_KEYS = ['filename', 'audio', 'pretty_text', 'env_variables']
 
 if platform.system() == 'Windows':
     import regex as re
@@ -445,10 +445,10 @@ class Config:
 
     @staticmethod
     def fromstring(cfg_str: str, file_format: str) -> 'Config':
-        """Build a Config instance from config text.
+        """Build a Config instance from config audio.
 
         Args:
-            cfg_str (str): Config text.
+            cfg_str (str): Config audio.
             file_format (str): Config file format corresponding to the
                config str. Only py/yml/yaml/json type are supported now!
 
@@ -554,7 +554,7 @@ class Config:
             filename (str): Name of config file.
 
         Returns:
-            Tuple[dict, str]: Variables dictionary and text of Config.
+            Tuple[dict, str]: Variables dictionary and audio of Config.
         """
         filename = osp.abspath(osp.expanduser(filename))
         check_file_exist(filename)
@@ -806,7 +806,7 @@ class Config:
 
     @property
     def text(self) -> str:
-        """get config text."""
+        """get config audio."""
         return self._text
 
     @property
@@ -816,7 +816,7 @@ class Config:
 
     @property
     def pretty_text(self) -> str:
-        """get formatted python config text."""
+        """get formatted python config audio."""
 
         indent = 4
 
@@ -991,7 +991,7 @@ class Config:
         super().__setattr__('_imported_names', state[5])
 
     def dump(self, file: Optional[Union[str, Path]] = None):
-        """Dump config to file or return config text.
+        """Dump config to file or return config audio.
 
         Args:
             file (str or Path, optional): If not specified, then the object
@@ -999,7 +999,7 @@ class Config:
             Defaults to None.
 
         Returns:
-            str or None: Config text.
+            str or None: Config audio.
         """
         file = str(file) if isinstance(file, Path) else file
         cfg_dict = self.to_dict()

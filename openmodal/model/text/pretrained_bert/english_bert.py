@@ -3,11 +3,13 @@ from transformers import AutoTokenizer, AutoModelForMaskedLM
 import sys
 
 model_id = 'bert-base-uncased'
-tokenizer = AutoTokenizer.from_pretrained(model_id)
+tokenizer = None
 model = None
 
 def get_bert_feature(text, word2ph, device=None):
-    global model
+    global model, tokenizer
+    if tokenizer is None:
+        tokenizer = AutoTokenizer.from_pretrained(model_id,clean_up_tokenization_spaces=True)
     if (
         sys.platform == "darwin"
         and torch.backends.mps.is_available()

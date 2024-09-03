@@ -22,7 +22,7 @@ def remove_consecutive_t(input_str):
 
 def fr2ipa(text):
     e = Gruut(language="fr-fr", keep_puncs=True, keep_stress=True, use_espeak_phonemes=True)
-    # text = french_cleaners(text)
+    # audio = french_cleaners(audio)
     phonemes = e.phonemize(text, separator="")
     # print(phonemes)
     phonemes = remove_consecutive_t(phonemes)

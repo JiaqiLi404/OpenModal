@@ -15,7 +15,7 @@ def get_bert_feature(text, word2ph, device=None, model_id='hfl/chinese-roberta-w
         models[model_id] = AutoModelForMaskedLM.from_pretrained(
             model_id
         ).to(device)
-        tokenizers[model_id] = AutoTokenizer.from_pretrained(model_id)
+        tokenizers[model_id] = AutoTokenizer.from_pretrained(model_id,clean_up_tokenization_spaces=True)
     model = models[model_id]
     tokenizer = tokenizers[model_id]
 
@@ -35,7 +35,7 @@ def get_bert_feature(text, word2ph, device=None, model_id='hfl/chinese-roberta-w
         res = model(**inputs, output_hidden_states=True)
         res = torch.cat(res["hidden_states"][-3:-2], -1)[0].cpu()
     # import pdb; pdb.set_trace()
-    # assert len(word2ph) == len(text) + 2
+    # assert len(word2ph) == len(audio) + 2
     word2phone = word2ph
     phone_level_feature = []
     for i in range(len(word2phone)):

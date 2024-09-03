@@ -32,7 +32,7 @@ class Gruut(BasePhonemizer):
 
     Example:
 
-        >>> from TTS.tts.utils.text.phonemizers.gruut_wrapper import Gruut
+        >>> from TTS.tts.utils.audio.phonemizers.gruut_wrapper import Gruut
         >>> phonemizer = Gruut('en-us')
         >>> phonemizer.phonemize("Be a voice, not an! echo?", separator="|")
         'b|i| ə| v|ɔ|ɪ|s, n|ɑ|t| ə|n! ɛ|k|o|ʊ?'
@@ -55,7 +55,7 @@ class Gruut(BasePhonemizer):
         return "gruut"
 
     def phonemize_gruut(self, text: str, separator: str = "|", tie=False) -> str:  # pylint: disable=unused-argument
-        """Convert input text to phonemes.
+        """Convert input audio to phonemes.
 
         Gruut phonemizes the given `str` by seperating each phoneme character with `separator`, even for characters
         that constitude a single sound.
@@ -245,14 +245,14 @@ if __name__ == "__main__":
     print(not_existed_sym)
 
 
-    with open('./text/fr_phonemizer/french_symbols.txt', 'w') as g:
+    with open('./audio/fr_phonemizer/french_symbols.txt', 'w') as g:
         g.writelines(symbols + not_existed_sym)
         
-    with open('./text/fr_phonemizer/example_ipa.txt', 'w') as g:
+    with open('./audio/fr_phonemizer/example_ipa.txt', 'w') as g:
         g.writelines(phonemes)
 
     data = {'symbols': symbols + not_existed_sym}
 
-    with open('./text/fr_phonemizer/fr_symbols.json', 'w') as f:
+    with open('./audio/fr_phonemizer/fr_symbols.json', 'w') as f:
         json.dump(data, f, indent=4)
 

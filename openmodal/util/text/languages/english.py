@@ -184,9 +184,10 @@ def text_normalize(text):
     text = expand_abbreviations(text)
     return text
 
-model_id = 'pretrained_bert-base-uncased'
-tokenizer = AutoTokenizer.from_pretrained(model_id)
+
 def g2p_old(text):
+    model_id = 'pretrained_bert-base-uncased'
+    tokenizer = AutoTokenizer.from_pretrained(model_id)
     tokenized = tokenizer.tokenize(text)
     # import pdb; pdb.set_trace()
     phones = []
@@ -215,6 +216,8 @@ def g2p_old(text):
 
 def g2p(text, pad_start_end=True, tokenized=None):
     if tokenized is None:
+        model_id = 'pretrained_bert-base-uncased'
+        tokenizer = AutoTokenizer.from_pretrained(model_id)
         tokenized = tokenizer.tokenize(text)
     # import pdb; pdb.set_trace()
     phs = []

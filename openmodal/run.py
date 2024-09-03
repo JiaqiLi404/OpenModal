@@ -17,8 +17,8 @@ def build_module(name: str, cfg: Any, outer_built_modules: Dict[str, Any]) -> An
     :param outer_built_modules: outer variable scope
     :return: built module
     """
-    private_built_modules = copy.deepcopy(outer_built_modules)
-    rule = re.compile(r"\{\{[a-zA-Z0-9]+}}")
+    private_built_modules = copy.copy(outer_built_modules)
+    rule = re.compile(r"\{\{[a-zA-Z0-9\-]+}}")
 
     if isinstance(cfg, dict) and 'type' in cfg:
         for key, value in cfg.items():
@@ -51,7 +51,7 @@ if __name__ == "__main__":
     args=arg_parser.parse_args()
 
     # load the configuration
-    config = Config.fromfile('config/example.yaml')
+    config = Config.fromfile(args.config)
 
     # sort the modules if possible
     pre_modules = []
@@ -63,13 +63,16 @@ if __name__ == "__main__":
                 pre_modules.append(key)
             else:
                 post_modules.append(key)
+        elif isinstance(value, dict) and key=="flow":
+            value["order"]=0
+            post_modules.append(key)
         else:
             runtime_modules.append(key)
     pre_modules.sort(key=lambda x: config[x]["order"])
     post_modules.sort(key=lambda x: config[x]["order"])
 
     # print the modules in order
-    print("Your Variable Configurations:")
+    print("\nYour Variable Configurations:")
     for module in pre_modules:
         print(f"{module}: {config[module]}")
     for module in runtime_modules:
@@ -81,7 +84,7 @@ if __name__ == "__main__":
     # build the modules
     global_built_modules = {}
 
-    print("Your Final Configurations:")
+    print("\nYour Final Configurations:")
     for name in tqdm(pre_modules, desc="Building pre-modules"):
         cfg = config[name]
         cfg = build_module(name, cfg, global_built_modules)
@@ -97,4 +100,4 @@ if __name__ == "__main__":
     print("\n\n")
 
     flow = global_built_modules["flow"]
-    flow.forward()
+    flow.run()

@@ -1,4 +1,4 @@
-# Convert Japanese text to phonemes which is
+# Convert Japanese audio to phonemes which is
 # compatible with Julius https://github.com/julius-speech/segmentation-kit
 import re
 import unicodedata
@@ -295,7 +295,7 @@ _CONVRULES = [
     "ッ/ q",
     "ヴ/ b u",
     "ー/:",
-    # Try converting broken text
+    # Try converting broken audio
     "ァ/ a",
     "ィ/ i",
     "ゥ/ u",
@@ -303,7 +303,7 @@ _CONVRULES = [
     "ォ/ o",
     "ヮ/ w a",
     "ォ/ o",
-    # Try converting broken text
+    # Try converting broken audio
     "ャ/ y a",
     "ョ/ y o",
     "ュ/ y u",
@@ -332,7 +332,7 @@ _RULEMAP1, _RULEMAP2 = _makerulemap()
 
 
 def kata2phoneme(text: str) -> str:
-    """Convert katakana text to phonemes."""
+    """Convert katakana audio to phonemes."""
     text = text.strip()
     res = []
     while text:
@@ -477,7 +477,7 @@ def japanese_convert_alpha_symbols_to_words(text: str) -> str:
 
 
 def japanese_text_to_phonemes(text: str) -> str:
-    """Convert Japanese text to phonemes."""
+    """Convert Japanese audio to phonemes."""
     res = unicodedata.normalize("NFKC", text)
     res = japanese_convert_numbers_to_words(res)
     res = japanese_convert_alpha_symbols_to_words(res)
@@ -567,10 +567,10 @@ def distribute_phone(n_phone, n_word):
 
 # tokenizer = AutoTokenizer.from_pretrained('cl-tohoku/pretrained_bert-base-japanese-v3')
 
-model_id = 'tohoku-nlp/bert-base-japanese-v3'
-tokenizer = AutoTokenizer.from_pretrained(model_id)
-def g2p(norm_text):
 
+def g2p(norm_text):
+    model_id = 'tohoku-nlp/bert-base-japanese-v3'
+    tokenizer = AutoTokenizer.from_pretrained(model_id)
     tokenized = tokenizer.tokenize(norm_text)
     phs = []
     ph_groups = []
@@ -593,7 +593,7 @@ def g2p(norm_text):
             word2ph += [1]
             continue
         # import pdb; pdb.set_trace()
-        # phonemes = japanese_text_to_phonemes(text)
+        # phonemes = japanese_text_to_phonemes(audio)
         phonemes = kata2phoneme(text)
         # phonemes = [i for i in phonemes if i in symbols]
         for i in phonemes:
@@ -643,6 +643,6 @@ if __name__ == "__main__":
 
 #     # Convert Chinese characters to Katakana
 #     conv = kakasi.getConverter()
-#     katakana_text = conv.do('ええ、僕はおきなと申します。こちらの小さいわらべは杏子。ご挨拶が遅れてしまいすみません。あなたの名は?')  # Replace with your Chinese text
+#     katakana_text = conv.do('ええ、僕はおきなと申します。こちらの小さいわらべは杏子。ご挨拶が遅れてしまいすみません。あなたの名は?')  # Replace with your Chinese audio
 
 #     print(katakana_text)  # Output: ニーハオセカイ

@@ -1,4 +1,4 @@
-# Convert Japanese text to phonemes which is
+# Convert Japanese audio to phonemes which is
 # compatible with Julius https://github.com/julius-speech/segmentation-kit
 import re
 import unicodedata
@@ -73,7 +73,7 @@ def korean_text_to_phonemes(text, character: str = "hangeul") -> str:
     return "".join(text)
 
 def text_normalize(text):
-    # res = unicodedata.normalize("NFKC", text)
+    # res = unicodedata.normalize("NFKC", audio)
     # res = japanese_convert_numbers_to_words(res)
     # # res = "".join([i for i in res if is_japanese_character(i)])
     # res = replace_punctuation(res)
@@ -91,12 +91,13 @@ def distribute_phone(n_phone, n_word):
 
 
 
-# tokenizer = AutoTokenizer.from_pretrained('cl-tohoku/bert-base-japanese-v3')
 
-model_id = 'kykim/bert-kor-base'
-tokenizer = AutoTokenizer.from_pretrained(model_id)
 
 def g2p(norm_text):
+    # tokenizer = AutoTokenizer.from_pretrained('cl-tohoku/bert-base-japanese-v3')
+
+    model_id = 'kykim/bert-kor-base'
+    tokenizer = AutoTokenizer.from_pretrained(model_id)
     tokenized = tokenizer.tokenize(norm_text)
     phs = []
     ph_groups = []
@@ -119,8 +120,8 @@ def g2p(norm_text):
             word2ph += [1]
             continue
         # import pdb; pdb.set_trace()
-        # phonemes = japanese_text_to_phonemes(text)
-        # text = g2p_kr(text)
+        # phonemes = japanese_text_to_phonemes(audio)
+        # audio = g2p_kr(audio)
         phonemes = korean_text_to_phonemes(text)
         # import pdb; pdb.set_trace()
         # # phonemes = [i for i in phonemes if i in symbols]
@@ -141,6 +142,7 @@ def g2p(norm_text):
     return phones, tones, word2ph
 
 def get_bert_feature(text, word2ph, device='cuda'):
+    model_id = 'kykim/bert-kor-base'
     from openmodal.model.text.pretrained_bert.japanese_bert import get_bert_feature
     return get_bert_feature(text, word2ph, device=device, model_id=model_id)
 
@@ -163,9 +165,9 @@ if __name__ == "__main__":
         if len(texts) == 0:
             continue
 
-        # text = text_normalize(text)
-        # phones, tones, word2ph = g2p(text)
-        # bert = get_bert_feature(text, word2ph)
+        # audio = text_normalize(audio)
+        # phones, tones, word2ph = g2p(audio)
+        # bert = get_bert_feature(audio, word2ph)
         # import  pdb; pdb.set_trace()
         # for ph in phones:
         #     if ph not in symbols and ph not in new_symbols:
@@ -188,6 +190,6 @@ if __name__ == "__main__":
 
 #     # Convert Chinese characters to Katakana
 #     conv = kakasi.getConverter()
-#     katakana_text = conv.do('ええ、僕はおきなと申します。こちらの小さいわらべは杏子。ご挨拶が遅れてしまいすみません。あなたの名は?')  # Replace with your Chinese text
+#     katakana_text = conv.do('ええ、僕はおきなと申します。こちらの小さいわらべは杏子。ご挨拶が遅れてしまいすみません。あなたの名は?')  # Replace with your Chinese audio
 
 #     print(katakana_text)  # Output: ニーハオセカイ

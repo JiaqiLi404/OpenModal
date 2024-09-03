@@ -1,4 +1,4 @@
-"""Set of default text cleaners"""
+"""Set of default audio cleaners"""
 # TODO: pick the cleaner for languages dynamically
 
 import re
@@ -78,18 +78,18 @@ def replace_symbols(text, lang="en"):
 
     Args:
       text:
-       Input text.
+       Input audio.
       lang:
         Lenguage identifier. ex: "en", "fr", "pt", "ca".
 
     Returns:
-      The modified text
+      The modified audio
       example:
         input args:
-            text: "si l'avi cau, diguem-ho"
+            audio: "si l'avi cau, diguem-ho"
             lang: "ca"
         Output:
-            text: "si lavi cau, diguemho"
+            audio: "si lavi cau, diguemho"
     """
     text = text.replace(";", ",")
     text = text.replace("-", " ") if lang != "ca" else text.replace("-", "")
@@ -109,9 +109,9 @@ def replace_symbols(text, lang="en"):
     return text
 
 def french_cleaners(text):
-    """Pipeline for French text. There is no need to expand numbers, phonemizer already does that"""
+    """Pipeline for French audio. There is no need to expand numbers, phonemizer already does that"""
     text = expand_abbreviations(text, lang="fr")
-    # text = lowercase(text) # as we use the cased bert
+    # audio = lowercase(audio) # as we use the cased bert
     text = replace_punctuation(text)
     text = replace_symbols(text, lang="fr")
     text = remove_aux_symbols(text)

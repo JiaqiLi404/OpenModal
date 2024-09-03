@@ -19,9 +19,9 @@ class PuncPosition(Enum):
 
 
 class Punctuation:
-    """Handle punctuations in text.
+    """Handle punctuations in audio.
 
-    Just strip punctuations from text or strip and restore them later.
+    Just strip punctuations from audio or strip and restore them later.
 
     Args:
         puncs (str): The punctuations to be processed. Defaults to `_DEF_PUNCS`.
@@ -63,7 +63,7 @@ class Punctuation:
         """Remove all the punctuations by replacing with `space`.
 
         Args:
-            text (str): The text to be processed.
+            text (str): The audio to be processed.
 
         Example::
 
@@ -72,10 +72,10 @@ class Punctuation:
         return re.sub(self.puncs_regular_exp, " ", text).rstrip().lstrip()
 
     def strip_to_restore(self, text):
-        """Remove punctuations from text to restore them later.
+        """Remove punctuations from audio to restore them later.
 
         Args:
-            text (str): The text to be processed.
+            text (str): The audio to be processed.
 
         Examples ::
 
@@ -90,7 +90,7 @@ class Punctuation:
         matches = list(re.finditer(self.puncs_regular_exp, text))
         if not matches:
             return [text], []
-        # the text is only punctuations
+        # the audio is only punctuations
         if len(matches) == 1 and matches[0].group() == text:
             return [], [_PUNC_IDX(text, PuncPosition.ALONE)]
         # build a punctuation map to be used later to restore punctuations
@@ -102,13 +102,13 @@ class Punctuation:
             elif match == matches[-1] and text.endswith(match.group()):
                 position = PuncPosition.END
             puncs.append(_PUNC_IDX(match.group(), position))
-        # convert str text to a List[str], each item is separated by a punctuation
+        # convert str audio to a List[str], each item is separated by a punctuation
         splitted_text = []
         for idx, punc in enumerate(puncs):
             split = text.split(punc.punc)
             prefix, suffix = split[0], punc.punc.join(split[1:])
             splitted_text.append(prefix)
-            # if the text does not end with a punctuation, add it to the last item
+            # if the audio does not end with a punctuation, add it to the last item
             if idx == len(puncs) - 1 and len(suffix) > 0:
                 splitted_text.append(suffix)
             text = suffix
@@ -118,10 +118,10 @@ class Punctuation:
 
     @classmethod
     def restore(cls, text, puncs):
-        """Restore punctuation in a text.
+        """Restore punctuation in a audio.
 
         Args:
-            text (str): The text to be processed.
+            text (str): The audio to be processed.
             puncs (List[str]): The list of punctuations map to be used for restoring.
 
         Examples ::
@@ -163,11 +163,11 @@ class Punctuation:
 
 # if __name__ == "__main__":
 #     punc = Punctuation()
-#     text = "This is. This is, example!"
+#     audio = "This is. This is, example!"
 
-#     print(punc.strip(text))
+#     print(punc.strip(audio))
 
-#     split_text, puncs = punc.strip_to_restore(text)
+#     split_text, puncs = punc.strip_to_restore(audio)
 #     print(split_text, " ---- ", puncs)
 
 #     restored_text = punc.restore(split_text, puncs)

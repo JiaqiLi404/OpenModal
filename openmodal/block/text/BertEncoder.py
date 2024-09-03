@@ -23,9 +23,9 @@ class BertEncoder(nn.Module):
     ):
         super().__init__()
         # if num_languages is None:
-        #     from text import num_languages
+        #     from audio import num_languages
         # if num_tones is None:
-        #     from text import num_tones
+        #     from audio import num_tones
         self.n_vocab = n_vocab
         self.out_channels = out_channels
         self.hidden_channels = hidden_channels
@@ -37,10 +37,12 @@ class BertEncoder(nn.Module):
         self.gin_channels = gin_channels
         self.emb = nn.Embedding(n_vocab, hidden_channels)
         nn.init.normal_(self.emb.weight, 0.0, hidden_channels**-0.5)
-        self.tone_emb = nn.Embedding(num_tones, hidden_channels)
-        nn.init.normal_(self.tone_emb.weight, 0.0, hidden_channels**-0.5)
-        self.language_emb = nn.Embedding(num_languages, hidden_channels)
-        nn.init.normal_(self.language_emb.weight, 0.0, hidden_channels**-0.5)
+        if num_tones is not None:
+            self.tone_emb = nn.Embedding(num_tones, hidden_channels)
+            nn.init.normal_(self.tone_emb.weight, 0.0, hidden_channels**-0.5)
+        if num_languages is not None:
+            self.language_emb = nn.Embedding(num_languages, hidden_channels)
+            nn.init.normal_(self.language_emb.weight, 0.0, hidden_channels**-0.5)
         self.bert_proj = nn.Conv1d(1024, hidden_channels, 1)
         self.ja_bert_proj = nn.Conv1d(768, hidden_channels, 1)
 

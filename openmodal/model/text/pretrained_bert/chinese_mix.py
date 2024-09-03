@@ -4,8 +4,8 @@ import re
 import cn2an
 from pypinyin import lazy_pinyin, Style
 
-from openmodal.process.text.text_cleaner.clean_text import language_tone_start_map
-# from text.symbols import punctuation
+from openmodal.util.text.languages.symbols import language_tone_start_map
+# from audio.symbols import punctuation
 
 from .tone_sandhi import ToneSandhi
 from openmodal.util.text.languages.english import g2p as g2p_en
@@ -15,7 +15,7 @@ punctuation = ["!", "?", "…", ",", ".", "'", "-"]
 current_file_path = os.path.dirname(__file__)
 pinyin_to_symbol_map = {
     line.split("\t")[0]: line.strip().split("\t")[1]
-    for line in open(os.path.join(current_file_path, "opencpop-strict.txt")).readlines()
+    for line in open(os.path.join("openmodal\\util\\text\\languages\\opencpop-strict.txt")).readlines()
 }
 
 import jieba.posseg as psg
@@ -78,7 +78,7 @@ def g2p(text, impl='v2'):
         raise NotImplementedError()
     phones, tones, word2ph = _func(sentences)
     assert sum(word2ph) == len(phones)
-    # assert len(word2ph) == len(text)  # Sometimes it will crash,you can add a try-catch.
+    # assert len(word2ph) == len(audio)  # Sometimes it will crash,you can add a try-catch.
     phones = ["_"] + phones + ["_"]
     tones = [0] + tones + [0]
     word2ph = [1] + word2ph + [1]
@@ -97,9 +97,9 @@ def _get_initials_finals(word):
         finals.append(v)
     return initials, finals
 
-model_id = 'bert-base-multilingual-uncased'
-tokenizer = AutoTokenizer.from_pretrained(model_id)
 def _g2p(segments):
+    model_id = 'bert-base-multilingual-uncased'
+    tokenizer = AutoTokenizer.from_pretrained(model_id)
     phones_list = []
     tones_list = []
     word2ph = []
@@ -201,6 +201,8 @@ def get_bert_feature(text, word2ph, device):
 
 from openmodal.util.text.languages.chinese import _g2p as _chinese_g2p
 def _g2p_v2(segments):
+    model_id = 'bert-base-multilingual-uncased'
+    tokenizer = AutoTokenizer.from_pretrained(model_id,clean_up_tokenization_spaces=True)
     spliter = '#$&^!@'
 
     phones_list = []
@@ -235,7 +237,7 @@ def _g2p_v2(segments):
     
 
 if __name__ == "__main__":
-    # from text.chinese_bert import get_bert_feature
+    # from audio.chinese_bert import get_bert_feature
 
     text = "NFT啊！chemistry 但是《原神》是由,米哈\游自主，  [研发]的一款全.新开放世界.冒险游戏"
     text = '我最近在学习machine learning，希望能够在未来的artificial intelligence领域有所建树。'
@@ -250,5 +252,5 @@ if __name__ == "__main__":
 
 
 # # 示例用法
-# text = "这是一个示例文本：,你好！这是一个测试...."
-# print(g2p_paddle(text))  # 输出: 这是一个示例文本你好这是一个测试
+# audio = "这是一个示例文本：,你好！这是一个测试...."
+# print(g2p_paddle(audio))  # 输出: 这是一个示例文本你好这是一个测试

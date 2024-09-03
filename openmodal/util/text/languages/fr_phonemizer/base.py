@@ -14,7 +14,7 @@ class BasePhonemizer(abc.ABC):
             - keep track of punctuation marks
 
         2. Phonemization:
-            - convert text to phonemes
+            - convert audio to phonemes
 
         3. Postprocessing:
             - join phonemes
@@ -91,7 +91,7 @@ class BasePhonemizer(abc.ABC):
         """The main phonemization method"""
 
     def _phonemize_preprocess(self, text) -> Tuple[List[str], List]:
-        """Preprocess the text before phonemization
+        """Preprocess the audio before phonemization
 
         1. remove spaces
         2. remove punctuation
@@ -100,7 +100,7 @@ class BasePhonemizer(abc.ABC):
         """
         text = text.strip()
         if self._keep_puncs:
-            # a tuple (text, punctuation marks)
+            # a tuple (audio, punctuation marks)
             return self._punctuator.strip_to_restore(text)
         return [self._punctuator.strip(text)], []
 
@@ -114,7 +114,7 @@ class BasePhonemizer(abc.ABC):
         return phonemized[0]
 
     def phonemize(self, text: str, separator="|", language: str = None) -> str:  # pylint: disable=unused-argument
-        """Returns the `text` phonemized for the given language
+        """Returns the `audio` phonemized for the given language
 
         Args:
             text (str):
@@ -124,7 +124,7 @@ class BasePhonemizer(abc.ABC):
                 string separator used between phonemes. Default to '_'.
 
         Returns:
-            (str): Phonemized text
+            (str): Phonemized audio
         """
         text, punctuations = self._phonemize_preprocess(text)
         phonemized = []

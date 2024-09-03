@@ -19,11 +19,11 @@ def text_normalize(text):
     text = fr_cleaner.french_cleaners(text)
     return text
 
-model_id = 'dbmdz/pretrained_bert-base-french-europeana-cased'
-tokenizer = AutoTokenizer.from_pretrained(model_id)
 
 def g2p(text, pad_start_end=True, tokenized=None):
     if tokenized is None:
+        model_id = 'dbmdz/pretrained_bert-base-french-europeana-cased'
+        tokenizer = AutoTokenizer.from_pretrained(model_id)
         tokenized = tokenizer.tokenize(text)
     # import pdb; pdb.set_trace()
     phs = []
@@ -76,18 +76,18 @@ if __name__ == "__main__":
     print(phoneme)
 
     
-    # from TTS.tts.utils.text.phonemizers.multi_phonemizer import MultiPhonemizer
-    # from text.cleaner_multiling import unicleaners
+    # from TTS.tts.utils.audio.phonemizers.multi_phonemizer import MultiPhonemizer
+    # from audio.cleaner_multiling import unicleaners
     #
-    # def text_normalize(text):
-    #     text = unicleaners(text, cased=True, lang='fr')
-    #     return text
+    # def text_normalize(audio):
+    #     audio = unicleaners(audio, cased=True, lang='fr')
+    #     return audio
     #
     # # print(ori_text)
-    # text = text_normalize(ori_text)
-    # print(text)
+    # audio = text_normalize(ori_text)
+    # print(audio)
     # phonemizer = MultiPhonemizer({"fr-fr": "espeak"})
     # # phonemizer.lang_to_phonemizer['fr'].keep_stress = True
     # # phonemizer.lang_to_phonemizer['fr'].use_espeak_phonemes = True
-    # phoneme = phonemizer.phonemize(text, separator="", language='fr-fr')
+    # phoneme = phonemizer.phonemize(audio, separator="", language='fr-fr')
     # print(phoneme)

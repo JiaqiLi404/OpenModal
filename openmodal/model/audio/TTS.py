@@ -110,11 +110,11 @@ class TTS(nn.Module):
                 tx = tqdm(texts)
         for t in tx:
             if language in ['EN', 'ZH_MIX_EN']:
-                # split the text by capital letters
+                # split the audio by capital letters
                 t = re.sub(r'([a-z])([A-Z])', r'\1 \2', t)
             device = self.device
             bert, ja_bert, phones, tones, lang_ids = get_text_for_tts_infer(t, language, self.hps, device,
-                                                                                  self.symbol_to_id)
+                                                                            self.symbol_to_id)
             with torch.no_grad():
                 x_tst = phones.to(device).unsqueeze(0)
                 tones = tones.to(device).unsqueeze(0)
@@ -186,6 +186,7 @@ class SynthesizerTrn(nn.Module):
             num_languages=None,
             num_tones=None,
             norm_refenc=False,
+            zero_g=False,
             **kwargs
     ):
         super().__init__()
@@ -286,6 +287,7 @@ class SynthesizerTrn(nn.Module):
         else:
             self.ref_enc = ReferenceEncoder(spec_channels, gin_channels, layernorm=norm_refenc)
         self.use_vc = use_vc
+        self.zero_g = zero_g
 
     def forward(self, x, x_lengths, y, y_lengths, sid, tone, language, bert, ja_bert):
         if self.n_speakers > 0:
@@ -425,10 +427,10 @@ class SynthesizerTrn(nn.Module):
     def voice_conversion(self, y, y_lengths, sid_src, sid_tgt, tau=1.0):
         g_src = sid_src
         g_tgt = sid_tgt
-        z, m_q, logs_q, y_mask = self.enc_q(y, y_lengths, g=g_src, tau=tau)
+        z, m_q, logs_q, y_mask = self.enc_q(y, y_lengths, g=g_src if not self.zero_g else torch.zeros_like(g_src), tau=tau )
         z_p = self.flow(z, y_mask, g=g_src)
         z_hat = self.flow(z_p, y_mask, g=g_tgt, reverse=True)
-        o_hat = self.dec(z_hat * y_mask, g=g_tgt)
+        o_hat = self.dec(z_hat * y_mask, g=g_tgt if not self.zero_g else torch.zeros_like(g_tgt))
         return o_hat, y_mask, (z, z_p, z_hat)
 
 
@@ -526,7 +528,8 @@ def load_or_download_model(locale, device, use_hf=True, ckpt_path=None):
         else:
             assert language in DOWNLOAD_CKPT_URLS
             ckpt_path = cached_path(DOWNLOAD_CKPT_URLS[language])
-    return torch.load(ckpt_path, map_location=device)
+    return torch.load(ckpt_path, map_location=device, weights_only=True)
+
 
 def get_text_for_tts_infer(text, language_str, hps, device, symbol_to_id=None):
     norm_text, phone, tone, word2ph = clean_text(text, language_str)
@@ -565,10 +568,13 @@ def get_text_for_tts_infer(text, language_str, hps, device, symbol_to_id=None):
     tone = torch.LongTensor(tone)
     language = torch.LongTensor(language)
     return bert, ja_bert, phone, tone, language
+
+
 def intersperse(lst, item):
     result = [item] * (len(lst) * 2 + 1)
     result[1::2] = lst
     return result
+
 
 def maximum_path(neg_cent, mask):
     device = neg_cent.device
@@ -580,6 +586,7 @@ def maximum_path(neg_cent, mask):
     t_s_max = mask.sum(2)[:, 0].data.cpu().numpy().astype(int32)
     maximum_path_jit(path, neg_cent, t_t_max, t_s_max)
     return from_numpy(path).to(device=device, dtype=dtype)
+
 
 @numba.jit(
     numba.void(
@@ -621,9 +628,11 @@ def maximum_path_jit(paths, values, t_ys, t_xs):
         for y in range(t_y - 1, -1, -1):
             path[y, index] = 1
             if index != 0 and (
-                index == y or value[y - 1, index] < value[y - 1, index - 1]
+                    index == y or value[y - 1, index] < value[y - 1, index - 1]
             ):
                 index = index - 1
+
+
 def rand_slice_segments(x, x_lengths=None, segment_size=4):
     b, d, t = x.size()
     if x_lengths is None:
@@ -632,6 +641,8 @@ def rand_slice_segments(x, x_lengths=None, segment_size=4):
     ids_str = (torch.rand([b]).to(device=x.device) * ids_str_max).to(dtype=torch.long)
     ret = slice_segments(x, ids_str, segment_size)
     return ret, ids_str
+
+
 def slice_segments(x, ids_str, segment_size=4):
     ret = torch.zeros_like(x[:, :, :segment_size])
     for i in range(x.size(0)):
@@ -639,6 +650,8 @@ def slice_segments(x, ids_str, segment_size=4):
         idx_end = idx_str + segment_size
         ret[i] = x[i, :, idx_str:idx_end]
     return ret
+
+
 def sequence_mask(length, max_length=None):
     if max_length is None:
         max_length = length.max()
@@ -651,7 +664,6 @@ def generate_path(duration, mask):
     duration: [b, 1, t_x]
     mask: [b, 1, t_y, t_x]
     """
-
     b, _, t_y, t_x = mask.shape
     cum_duration = torch.cumsum(duration, -1)
 
@@ -661,18 +673,21 @@ def generate_path(duration, mask):
     path = path - F.pad(path, convert_pad_shape([[0, 0], [1, 0], [0, 0]]))[:, :-1]
     path = path.unsqueeze(1).transpose(2, 3) * mask
     return path
+
+
 def convert_pad_shape(pad_shape):
     layer = pad_shape[::-1]
     pad_shape = [item for sublist in layer for item in sublist]
     return pad_shape
 
+
 def get_bert(norm_text, word2ph, language, device):
     from openmodal.model.text.pretrained_bert.chinese_bert import get_bert_feature as zh_bert
-    from openmodal.model.text.pretrained_bert .english_bert import get_bert_feature as en_bert
-    from openmodal.model.text.pretrained_bert .japanese_bert import get_bert_feature as jp_bert
-    from openmodal.model.text.pretrained_bert .chinese_mix import get_bert_feature as zh_mix_en_bert
-    from openmodal.model.text.pretrained_bert .spanish_bert import get_bert_feature as sp_bert
-    from openmodal.model.text.pretrained_bert .french_bert import get_bert_feature as fr_bert
+    from openmodal.model.text.pretrained_bert.english_bert import get_bert_feature as en_bert
+    from openmodal.model.text.pretrained_bert.japanese_bert import get_bert_feature as jp_bert
+    from openmodal.model.text.pretrained_bert.chinese_mix import get_bert_feature as zh_mix_en_bert
+    from openmodal.model.text.pretrained_bert.spanish_bert import get_bert_feature as sp_bert
+    from openmodal.model.text.pretrained_bert.french_bert import get_bert_feature as fr_bert
     from openmodal.util.text.languages.korean import get_bert_feature as kr_bert
 
     lang_bert_func_map = {"ZH": zh_bert, "EN": en_bert, "JP": jp_bert, 'ZH_MIX_EN': zh_mix_en_bert,
