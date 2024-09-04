@@ -1,7 +1,7 @@
-<div align="center">
+<div style="text-align: center;">
   <img src="res/logo.png" width="400"/>
- <div align="center">
-    <b><font size="25">OpenModal</font></b>
+ <div style="text-align: center;">
+    <b><span style="text-align: center;font-size: xxx-large">OpenModal</span></b>
 </div>
   <div>&nbsp;</div>
 </div>
