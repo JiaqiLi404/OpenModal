@@ -21,6 +21,7 @@ OpenModal is a foundational library for training multi-modal models based on PyT
 - [x] [MeloTTS](https://github.com/myshell-ai/MeloTTS) TTS Model (config/tts.yaml).
 - [x] [OpenVoice](https://github.com/myshell-ai/OpenVoice) Instant voice cloning by MIT and MyShell (
   config/tts_voice_converter.yaml).
+- [ ] [GPT-SoVITS](https://github.com/RVC-Boss/GPT-SoVITS) A Powerful Few-shot Text-to-Speech Tool with WebUI.
 
 ## Supporting Customizing Modules:
 
@@ -33,6 +34,15 @@ OpenModal is a foundational library for training multi-modal models based on PyT
 - **process**: Here you could define the additional processes, e.g. screening, augmenting, etc.
 - **view_object**: Here you could define the formal object-oriented model inputs and outputs.
 - **visualization**: Here you could define the visualization functions.
+
+
+## Run
+For model users, you only need look once at the configs and our registries (which stores all the supported modules on our platform),
+and customize your ideal configs. Then you could your config by running:
+```shell
+python openmodal/run.py --config config/xxx.yaml
+```
+
 
 ## Configs
 
