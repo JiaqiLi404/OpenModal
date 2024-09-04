@@ -1,4 +1,11 @@
-# OpenModal
+<div align="center">
+  <img src="res/logo.png" width="600"/>
+ <div align="center">
+    <b><font size="15">OpenModal</font></b>
+</div>
+  <div>&nbsp;</div>
+</div>
+
 ## Introduction
 
 OpenModal is a foundational library for training multi-modal models based on PyTorch. The highlights are:
