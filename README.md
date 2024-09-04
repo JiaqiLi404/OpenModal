@@ -1,7 +1,7 @@
 <div align="center">
   <img src="res/logo.png" width="400"/>
  <div align="center">
-    <b><font size="25">OpenModal</font></b>
+    <b><font size=25>OpenModal</font></b>
 </div>
   <div>&nbsp;</div>
 </div>
