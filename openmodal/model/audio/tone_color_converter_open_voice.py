@@ -6,7 +6,7 @@ import os
 import librosa
 
 from openmodal.engine import ModelBase
-from openmodal.model.audio.TTS import SynthesizerTrn, get_hparams_from_file
+from openmodal.model.audio.TTS_melo import SynthesizerTrn, get_hparams_from_file
 
 
 @ModelBase.register_module(name="OpenVoiceToneColorConverter")

@@ -1,135 +1,93 @@
 import re
 
-from yaml import warnings
+class SplitSentenceStrategyEnum:
+    SplitByLength = 'SplitByLength'
+    SplitByPunctuation = 'SplitByPunctuation'
+    SplitBySentence = 'SplitBySentence'
 
-"""
-This util is copied from MeloTTS
-https://github.com/myshell-ai/MeloTTS
-"""
-
-
-def split_sentence(text, min_len=10, language_str='EN'):
-    if language_str in ['EN', 'FR', 'ES', 'SP']:
-        sentences = split_sentences_latin(text, min_len=min_len)
-    else:
-        sentences = split_sentences_zh(text, min_len=min_len)
-    return sentences
-
-
-def split_sentences_latin(text, min_len=10):
-    text = re.sub('[。！？；]', '.', text)
-    text = re.sub('[，]', ',', text)
-    text = re.sub('[“”]', '"', text)
-    text = re.sub('[‘’]', "'", text)
-    text = re.sub(r"[\<\>\(\)\[\]\"\«\»]+", "", text)
-    return [item.strip() for item in txtsplit(text, 256, 512) if item.strip()]
+    @staticmethod
+    def build(key:str):
+        if key==SplitSentenceStrategyEnum.SplitByLength:
+            return SplitSentenceStrategyEnum.SplitByLength
+        elif key==SplitSentenceStrategyEnum.SplitByPunctuation:
+            return SplitSentenceStrategyEnum.SplitByPunctuation
+        elif key==SplitSentenceStrategyEnum.SplitBySentence:
+            return SplitSentenceStrategyEnum.SplitBySentence
+        else:
+            raise ValueError(f"Invalid key {key}")
 
 
-def split_sentences_zh(text, min_len=10):
-    text = re.sub('[。！？；]', '.', text)
-    text = re.sub('[，]', ',', text)
-    # 将文本中的换行符、空格和制表符替换为空格
+def split_sentence(
+        text,
+        strategy: SplitSentenceStrategyEnum = SplitSentenceStrategyEnum.SplitByLength,
+        language_str='EN',
+        min_len=10,
+        max_len=512,
+        by_sentence_length=4,
+        by_length_desired=256
+):
+    # pre-process text, replace some punctuations
+    # text = re.sub('[。！？；]', '.', text)
+    # text = re.sub('[，]', ',', text)
+    # text = re.sub('[：]', ':', text)
     text = re.sub('[\n\t ]+', ' ', text)
-    # 在标点符号后添加一个空格
-    text = re.sub('([,.!?;])', r'\1 $#!', text)
-    # 分隔句子并去除前后空格
-    # sentences = [s.strip() for s in re.split('(。|！|？|；)', audio)]
-    sentences = [s.strip() for s in text.split('$#!')]
-    if len(sentences[-1]) == 0: del sentences[-1]
-
-    new_sentences = []
-    new_sent = []
-    count_len = 0
-    for ind, sent in enumerate(sentences):
-        new_sent.append(sent)
-        count_len += len(sent)
-        if count_len > min_len or ind == len(sentences) - 1:
-            count_len = 0
-            new_sentences.append(' '.join(new_sent))
-            new_sent = []
-    return merge_short_sentences_zh(new_sentences)
-
-
-def merge_short_sentences(sens, language_str='EN'):
-    """Avoid short sentences by merging them with the following sentence.
-
-    Args:
-        List[str]: list of input sentences.
-
-    Returns:
-        List[str]: list of output sentences.
-    """
-    if language_str in ['EN', 'FR', 'ES', 'SP']:
-        sentences = merge_short_sentences_en(sens)
-    elif language_str in ['ZH']:
-        sentences = merge_short_sentences_zh(sens)
-    else:
-        sentences = sens
-        warnings("Warning while merging short sentences: language not supported: " + language_str)
-    return sentences
-
-
-def merge_short_sentences_en(sens):
-    """Avoid short sentences by merging them with the following sentence.
-
-    Args:
-        List[str]: list of input sentences.
-
-    Returns:
-        List[str]: list of output sentences.
-    """
-    sens_out = []
-    for s in sens:
-        # If the previous sentense is too short, merge them with
-        # the current sentence.
-        if len(sens_out) > 0 and len(sens_out[-1].split(" ")) <= 2:
-            sens_out[-1] = sens_out[-1] + " " + s
-        else:
-            sens_out.append(s)
-    try:
-        if len(sens_out[-1].split(" ")) <= 2:
-            sens_out[-2] = sens_out[-2] + " " + sens_out[-1]
-            sens_out.pop(-1)
-    except:
-        pass
-    return sens_out
-
-
-def merge_short_sentences_zh(sens):
-    # return sens
-    """Avoid short sentences by merging them with the following sentence.
-
-    Args:
-        List[str]: list of input sentences.
-
-    Returns:
-        List[str]: list of output sentences.
-    """
-    sens_out = []
-    for s in sens:
-        # If the previous sentense is too short, merge them with
-        # the current sentence.
-        if len(sens_out) > 0 and len(sens_out[-1]) <= 2:
-            sens_out[-1] = sens_out[-1] + " " + s
-        else:
-            sens_out.append(s)
-    try:
-        if len(sens_out[-1]) <= 2:
-            sens_out[-2] = sens_out[-2] + " " + sens_out[-1]
-            sens_out.pop(-1)
-    except:
-        pass
-    return sens_out
-
-
-def txtsplit(text, desired_length=100, max_length=200):
-    """Split audio it into chunks of a desired length trying to keep sentences intact."""
     text = re.sub(r'\n\n+', '\n', text)
     text = re.sub(r'\s+', ' ', text)
+    text = re.sub('[“”]', '"', text)
+    text = re.sub('[‘’]', "'", text)
+    text = re.sub(r"……", ".", text)
+    text = re.sub(r"——", ",", text)
     text = re.sub(r'[""]', '"', text)
     text = re.sub(r'([,.?!])', r'\1 ', text)
-    text = re.sub(r'\s+', ' ', text)
+    text = text.strip("\n")
+    splits = {"，", "。", "？", "！", ",", ".", "?", "!", "~", ":", "：", "—", "…", }
+    if text[-1] not in splits:
+        text += "." if language_str in ['EN', 'FR', 'ES', 'SP'] else "。"
 
+    if strategy == SplitSentenceStrategyEnum.SplitByLength:
+        sentences = split_sentences_by_length(
+            text,
+            min_len=min_len,
+            max_len=max_len,
+            by_length_desired=by_length_desired,
+            language=language_str
+        )
+        return sentences
+    elif strategy == SplitSentenceStrategyEnum.SplitBySentence:
+        # 在标点符号后添加一个空格
+        text = re.sub('([,.!?;，。！？；])', r'\1 $#!', text)
+        # 分隔句子并去除前后空格
+        sentences = [s.strip() for s in text.split('$#!')]
+        if len(sentences[-1]) == 0: del sentences[-1]
+        sentences = [s for s in sentences if len(s) > 0 and not re.match(r'^[\s\.,;:!?。，！？；：]*$', s)]
+
+        i = 0
+        res = []
+        while i < len(sentences):
+            by_sentence_len = by_sentence_length
+            res_temp = "".join(sentences[i:i + by_sentence_len]).strip()
+            while by_sentence_len + i + 1 < len(sentences) and len(res_temp) < min_len:
+                by_sentence_len += 1
+                res_temp = "".join(sentences[i:i + by_sentence_len]).strip()
+            while by_sentence_len >= 1 and len(res_temp) > max_len:
+                by_sentence_len -= 1
+                res_temp = "".join(sentences[i:i + by_sentence_len]).strip()
+            res.append(res_temp)
+            i += by_sentence_len
+        return res
+    elif strategy == SplitSentenceStrategyEnum.SplitByPunctuation:
+        sentences = split_sentences_by_punctuations(
+            text,
+            min_len=min_len,
+            max_len=max_len,
+            language=language_str
+        )
+        return sentences
+    else:
+        raise ValueError("Invalid split strategy")
+
+
+def split_sentences_by_length(text, min_len, max_len, by_length_desired, language):
     rv = []
     in_quote = False
     current = ""
@@ -161,29 +119,88 @@ def txtsplit(text, desired_length=100, max_length=200):
         current = ""
         split_pos = []
 
+    '''
+    使用 seek(1) 获取下一个字符，并更新 current。
+    如果当前片段长度 current 达到 max_len，并且切分点 split_pos 不为空且片段长度大于 by_length_desired 的一半，则向回找最近的切分点；否则，向回查找直到遇到合适的切分点。
+    如果不是在引号中，并且当前字符是句号、问号、换行符或逗号，并且下一个字符是换行符或空格，则可能需要切分。
+    如果是在引号中，并且下一个字符是引号且接下来的字符是换行符或空格，则跳过引号并进行切分。
+    '''
     while pos < end_pos:
         c = seek(1)
-        if len(current) >= max_length:
-            if len(split_pos) > 0 and len(current) > (desired_length / 2):
+        if len(current) >= max_len:
+            if len(split_pos) > 0 and len(current) > (by_length_desired / 2):
                 d = pos - split_pos[-1]
                 seek(-d)
             else:
-                while c not in '!?.\n ' and pos > 0 and len(current) > desired_length:
+                while c not in '!?.\n ！？。' and pos > 0 and len(current) > by_length_desired:
                     c = seek(-1)
             commit()
-        elif not in_quote and (c in '!?\n' or (c in '.,' and peek(1) in '\n ')):
-            while pos < len(text) - 1 and len(current) < max_length and peek(1) in '!?.':
+        elif not in_quote and (c in '!?\n！？。' or (c in '.,。，' and peek(1) in '\n ')):
+            while pos < len(text) - 1 and len(current) < max_len and peek(1) in '!?.！？。':
                 c = seek(1)
             split_pos.append(pos)
-            if len(current) >= desired_length:
+            if len(current) >= by_length_desired:
                 commit()
-        elif in_quote and peek(1) == '"' and peek(2) in '\n ':
+        elif in_quote and peek(1) == '"“”‘’' and peek(2) in '\n ':
             seek(2)
             split_pos.append(pos)
     rv.append(current)
     rv = [s.strip() for s in rv]
-    rv = [s for s in rv if len(s) > 0 and not re.match(r'^[\s\.,;:!?]*$', s)]
+    rv = [s for s in rv if len(s) > 0 and not re.match(r'^[\s\.,;:!?。，！？；：]*$', s)]
+    rv = [item.strip() for item in rv if item.strip()]
+
     return rv
+
+
+def split_sentences_by_punctuations(text, min_len, max_len, language):
+    # 在标点符号后添加一个空格
+    text = re.sub('([,.!?;，。！？；])', r'\1 $#!', text)
+    # 分隔句子并去除前后空格
+    # sentences = [s.strip() for s in re.split('(。|！|？|；)', audio)]
+    sentences = [s.strip() for s in text.split('$#!')]
+    if len(sentences[-1]) == 0: del sentences[-1]
+
+    new_sentences = []
+    new_sent = []
+    count_len = 0
+    for ind, sent in enumerate(sentences):
+        new_sent.append(sent)
+        count_len += len(sent)
+        # todo: Sentence length could still be longer than max_len
+        # if count_len>max_len:
+        if count_len > min_len or ind == len(sentences) - 1 or (
+                ind + 1 < len(sentences) and len(sentences[ind + 1]) > max_len):
+            count_len = 0
+            new_sentences.append(' '.join(new_sent))
+            new_sent = []
+    return merge_short_sentences_zh(new_sentences)
+
+
+def merge_short_sentences_zh(sens):
+    # return sens
+    """Avoid short sentences by merging them with the following sentence.
+
+    Args:
+        List[str]: list of input sentences.
+
+    Returns:
+        List[str]: list of output sentences.
+    """
+    sens_out = []
+    for s in sens:
+        # If the previous sentense is too short, merge them with
+        # the current sentence.
+        if len(sens_out) > 0 and len(sens_out[-1]) <= 2:
+            sens_out[-1] = sens_out[-1] + " " + s
+        else:
+            sens_out.append(s)
+    try:
+        if len(sens_out[-1]) <= 2:
+            sens_out[-2] = sens_out[-2] + " " + sens_out[-1]
+            sens_out.pop(-1)
+    except:
+        pass
+    return sens_out
 
 
 if __name__ == '__main__':

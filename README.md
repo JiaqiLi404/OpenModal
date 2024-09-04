@@ -8,8 +8,8 @@ OpenModal is a foundational library for training multi-modal models based on PyT
 - **Standardized**: We recommend a standardized way to define the formal object-oriented model inputs and outputs, which could help others to easily understand and utilize the model.
 
 ## Supported Models:
-- [x] [MeloTTS](https://github.com/myshell-ai/MeloTTS) TTS Model
-- [x] [OpenVoice](https://github.com/myshell-ai/OpenVoice) Instant voice cloning by MIT and MyShell.
+- [x] [MeloTTS](https://github.com/myshell-ai/MeloTTS) TTS Model (config/tts.yaml).
+- [x] [OpenVoice](https://github.com/myshell-ai/OpenVoice) Instant voice cloning by MIT and MyShell (config/tts_voice_converter.yaml).
 
 ## Supporting Customizing Modules:
 - **flow**: Here you could define the flow of the project, i.e. including data loading, preprocessing, augmentation, inferencing, etc.
@@ -60,6 +60,13 @@ model:
   order: -1
   type: "ResNet"
   num_classes: "{{num_classes}}"
+  depth: 18
+```
+When you need to import outer libraries or non-registered libraries, you should use the `{library}` format, e.g.:
+```yaml
+model:
+  type: "{torchvision.models.resnet}"
+  num_classes: "{openmodal.view_object.ResNetEnum.num_classes}"
   depth: 18
 ```
 A flow is necessary for the project, which defines the flow of the project, including data loading, preprocessing, augmentation, inferencing, etc.

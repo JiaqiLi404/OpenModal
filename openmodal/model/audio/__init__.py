@@ -1,2 +1,2 @@
-from .TTS import TTS
+from .TTS_melo import MeloTTS
 from .tone_color_converter_open_voice import OpenVoiceToneColorConverter

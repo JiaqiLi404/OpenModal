@@ -2,11 +2,13 @@ from typing import Dict, Any, Callable
 import copy
 import re
 from tqdm import tqdm
+import importlib
 import argparse
 
 from openmodal.engine import Config
 from openmodal.engine import Registry, MainBase, FlowBase, ModelBase, BlockBase, MetricBase, DatasetBase, ProcessBase, \
     PreProcessBase, ViewBase, VisualizationBase
+
 
 def build_module(name: str, cfg: Any, outer_built_modules: Dict[str, Any]) -> Any:
     """
@@ -18,37 +20,55 @@ def build_module(name: str, cfg: Any, outer_built_modules: Dict[str, Any]) -> An
     :return: built module
     """
     private_built_modules = copy.copy(outer_built_modules)
-    rule = re.compile(r"\{\{[a-zA-Z0-9\-]+}}")
+    variable_rule = re.compile(r"\{\{[a-zA-Z0-9\-]+}}")
+    outer_library_rule = re.compile(r"\{[a-zA-Z0-9.\-]+}")
 
     if isinstance(cfg, dict) and 'type' in cfg:
         for key, value in cfg.items():
             if isinstance(value, dict) and 'type' in value:
                 cfg[key] = build_module(key, value, private_built_modules)
-            if isinstance(value, str) and rule.match(value):
+            elif isinstance(value, str) and variable_rule.match(value):
                 inner_name = value[2:-2].strip()
                 if inner_name in private_built_modules:
                     cfg[key] = private_built_modules[inner_name]
                 else:
                     raise KeyError(f"Variable {inner_name} not found in the built modules, "
                                    f"please check whether the variable is defined before it is used.")
+            elif isinstance(value, str) and outer_library_rule.match(value):
+                library_path = value.strip().split(".")
+                library_path, library_name = ".".join(library_path[:-1]), library_path[-1]
+                library = importlib.import_module(library_path)
+                if hasattr(library, library_name):
+                    cfg[key] = getattr(library, library_name)
+                else:
+                    raise KeyError(f"Library {value} not found")
         module = MainBase.build(cfg)
-    elif isinstance(cfg, str) and rule.match(cfg):
+    elif isinstance(cfg, str) and variable_rule.match(cfg):
         inner_name = cfg[2:-2].strip()
         if inner_name in private_built_modules:
             module = private_built_modules[inner_name]
         else:
             raise KeyError(f"Variable {inner_name} not found in the built modules, "
                            f"please check whether the variable is defined before it is used.")
+    elif isinstance(cfg, str) and outer_library_rule.match(cfg):
+        library_path = cfg.strip().split(".")
+        library_path, library_name = ".".join(library_path[:-1]), library_path[-1]
+        library = importlib.import_module(library_path)
+        if hasattr(library, library_name):
+            module = getattr(library, library_name)
+        else:
+            raise KeyError(f"Library {cfg} not found")
     else:
         module = cfg
 
     outer_built_modules[name] = module
     return cfg
 
+
 if __name__ == "__main__":
-    arg_parser=argparse.ArgumentParser()
+    arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument("--config", type=str, default="config/example.yaml")
-    args=arg_parser.parse_args()
+    args = arg_parser.parse_args()
 
     # load the configuration
     config = Config.fromfile(args.config)
@@ -63,8 +83,8 @@ if __name__ == "__main__":
                 pre_modules.append(key)
             else:
                 post_modules.append(key)
-        elif isinstance(value, dict) and key=="flow":
-            value["order"]=0
+        elif isinstance(value, dict) and key == "flow":
+            value["order"] = 0
             post_modules.append(key)
         else:
             runtime_modules.append(key)

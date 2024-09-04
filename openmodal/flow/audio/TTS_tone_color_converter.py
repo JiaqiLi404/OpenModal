@@ -4,14 +4,14 @@ from tqdm import tqdm
 import torch
 
 from openmodal.engine import ModelBase
+from openmodal.flow import BaseFlow
 from openmodal.process.audio import speech_embedding
 
 
 @ModelBase.register_module(name="TTSToneColorConverterFlow")
-class TTSToneColorConverterFlow:
+class TTSToneColorConverterFlow(BaseFlow):
     def __init__(self, tts_flow, converter_model, whisper_model_dir, output_dir: Union[str],
-                 output_format: Optional[str] = 'wav', clean_cache=True, device='cuda',
-                 *args, **kwargs):
+                 output_format: Optional[str] = 'wav', clean_cache=True, *args, **kwargs):
         """
         VoiceToneColorConverterFlow
         :param tts_flow: The TTS flow for generating general speech
@@ -24,13 +24,13 @@ class TTSToneColorConverterFlow:
         :param args:
         :param kwargs:
         """
+        super().__init__( *args, **kwargs)
         self.tts_flow = tts_flow
         self.converter_model = converter_model
         self.whisper_model_dir = whisper_model_dir
         self.output_dir = output_dir
         self.output_format = output_format
         self.clean_cache = clean_cache
-        self.device = device
 
         self.tmp_dir = self.tts_flow.output_dir
         self.tmp_format = self.tts_flow.output_format
@@ -63,9 +63,12 @@ class TTSToneColorConverterFlow:
         speaker_key = self.tts_flow.speaker.lower().replace('_', '-')
         filename=os.path.basename(input_dir)
         filename =os.path.splitext(filename)[0]
+        output_dir=f"{self.output_dir}/{filename}-output.{self.output_format}"
+        if os.path.exists(output_dir):
+            os.remove(output_dir)
         self.converter_model.convert(
             audio_src_path=input_dir,
             src_se=torch.load(f"{self.converter_ckpt}/base_speakers/ses/{speaker_key}.pth", map_location=self.device),
             tgt_se=target_se,
-            output_path=f"{self.output_dir}/{filename}-output.{self.output_format}",
+            output_path=output_dir,
         )

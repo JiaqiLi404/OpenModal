@@ -4,12 +4,12 @@ import os
 from tqdm import tqdm
 
 from openmodal.engine import FlowBase
+from openmodal.flow import BaseFlow
 
 
 @FlowBase.register_module(name="TTSFlow")
-class TTSFlow:
-    def __init__(self, tts_model: object, speaker: any, output_dir: Union[str], output_format='wav', device='cuda:0',
-                 *args, **kwargs):
+class TTSFlow(BaseFlow):
+    def __init__(self, tts_model: object, speaker: any, output_dir: Union[str], output_format='wav', *args, **kwargs):
         """
         TTS Flow: Text to Speech audio flow, which is used to convert text to speech audio.
         :param tts_model: The TTS model object.
@@ -18,11 +18,11 @@ class TTSFlow:
         :param output_format: The output audio format, default is 'wav'.
         :param device: The device to run the TTS model, default is 'cuda:0'.
         """
+        super().__init__(*args, **kwargs)
         self.tts_model = tts_model
         self.speaker = speaker
         self.output_dir = output_dir
         self.output_format = output_format
-        self.device = device
 
         self._speaker_id = None
 
