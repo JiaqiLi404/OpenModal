@@ -10,14 +10,14 @@ local_path = "./bert/chinese-roberta-wwm-ext-large"
 tokenizers = {}
 models = {}
 
-def get_bert_feature(text, word2ph, device=None, model_id='hfl/chinese-roberta-wwm-ext-large'):
-    if model_id not in models:
-        models[model_id] = AutoModelForMaskedLM.from_pretrained(
-            model_id
+def get_bert_feature(text, word2ph, ckpt_bert_dir="hfl/chinese-roberta-wwm-ext-large",device=None):
+    if ckpt_bert_dir not in models:
+        models[ckpt_bert_dir] = AutoModelForMaskedLM.from_pretrained(
+            ckpt_bert_dir
         ).to(device)
-        tokenizers[model_id] = AutoTokenizer.from_pretrained(model_id,clean_up_tokenization_spaces=True)
-    model = models[model_id]
-    tokenizer = tokenizers[model_id]
+        tokenizers[ckpt_bert_dir] = AutoTokenizer.from_pretrained(ckpt_bert_dir,clean_up_tokenization_spaces=True)
+    model = models[ckpt_bert_dir]
+    tokenizer = tokenizers[ckpt_bert_dir]
 
     if (
         sys.platform == "darwin"

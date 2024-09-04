@@ -1,5 +1,8 @@
 import re
 
+from openmodal.view_object.text.languages import LanguagesEnum
+
+
 class SplitSentenceStrategyEnum:
     SplitByLength = 'SplitByLength'
     SplitByPunctuation = 'SplitByPunctuation'
@@ -20,7 +23,7 @@ class SplitSentenceStrategyEnum:
 def split_sentence(
         text,
         strategy: SplitSentenceStrategyEnum = SplitSentenceStrategyEnum.SplitByLength,
-        language_str='EN',
+        language=LanguagesEnum.EN,
         min_len=10,
         max_len=512,
         by_sentence_length=4,
@@ -42,7 +45,7 @@ def split_sentence(
     text = text.strip("\n")
     splits = {"，", "。", "？", "！", ",", ".", "?", "!", "~", ":", "：", "—", "…", }
     if text[-1] not in splits:
-        text += "." if language_str in ['EN', 'FR', 'ES', 'SP'] else "。"
+        text += "。" if language in [LanguagesEnum.ZH,LanguagesEnum.ZH_CA] else "。"
 
     if strategy == SplitSentenceStrategyEnum.SplitByLength:
         sentences = split_sentences_by_length(
@@ -50,7 +53,7 @@ def split_sentence(
             min_len=min_len,
             max_len=max_len,
             by_length_desired=by_length_desired,
-            language=language_str
+            language=language
         )
         return sentences
     elif strategy == SplitSentenceStrategyEnum.SplitBySentence:
@@ -80,7 +83,7 @@ def split_sentence(
             text,
             min_len=min_len,
             max_len=max_len,
-            language=language_str
+            language=language
         )
         return sentences
     else:

@@ -28,7 +28,7 @@ class TTSFlow(BaseFlow):
 
     def run(self):
         texts = [
-            "通过拖拽多个文件上传多个参考音频（建议同性），平均融合他们的音色。如不填写此项，音色由左侧单个参考音频控制。如是微调模型，建议参考音频全部在微调训练集音色内，底模不用管。"
+            "使用无参考文本模式时建议使用微调的GPT，听不清参考音频说的啥(不晓得写啥)可以开。开启后无视填写的参考文本。"
         ]
 
         # create the output directory, clean it if it exists

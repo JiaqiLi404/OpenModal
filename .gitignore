@@ -5,3 +5,5 @@
 *.pth
 *.config
 /output/
+/processed/
+/temp/

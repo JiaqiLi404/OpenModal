@@ -5,7 +5,7 @@ import sys
 
 models = {}
 tokenizers = {}
-def get_bert_feature(text, word2ph, device=None, model_id='tohoku-nlp/bert-base-japanese-v3'):
+def get_bert_feature(text, word2ph, ckpt_bert_dir='tohoku-nlp/bert-base-japanese-v3',device=None):
     global model
     global tokenizer
 
@@ -17,16 +17,16 @@ def get_bert_feature(text, word2ph, device=None, model_id='tohoku-nlp/bert-base-
         device = "mps"
     if not device:
         device = "cuda"
-    if model_id not in models:
-        model = AutoModelForMaskedLM.from_pretrained(model_id).to(
+    if ckpt_bert_dir not in models:
+        model = AutoModelForMaskedLM.from_pretrained(ckpt_bert_dir).to(
             device
         )
-        models[model_id] = model
-        tokenizer = AutoTokenizer.from_pretrained(model_id)
-        tokenizers[model_id] = tokenizer
+        models[ckpt_bert_dir] = model
+        tokenizer = AutoTokenizer.from_pretrained(ckpt_bert_dir)
+        tokenizers[ckpt_bert_dir] = tokenizer
     else:
-        model = models[model_id]
-        tokenizer = tokenizers[model_id]
+        model = models[ckpt_bert_dir]
+        tokenizer = tokenizers[ckpt_bert_dir]
 
 
     with torch.no_grad():

@@ -11,7 +11,6 @@ _PUNC_IDX = collections.namedtuple("_punc_index", ["punc", "position"])
 
 class PuncPosition(Enum):
     """Enum for the punctuations positions"""
-
     BEGIN = 0
     END = 1
     MIDDLE = 2

@@ -1,24 +1,22 @@
-from openmodal.model.text.pretrained_bert import chinese_mix
-from openmodal.util.text.languages import french, spanish, english, japanese, chinese, korean
-from openmodal.util.text.languages.symbols import num_zh_tones, num_ja_tones, num_en_tones, num_kr_tones, num_es_tones, \
-    zh_symbols, ja_symbols, en_symbols, kr_symbols, es_symbols, fr_symbols, de_symbols, ru_symbols, symbols, \
-    language_tone_start_map
+from openmodal.util.text.languages import french, spanish, english, japanese, chinese, korean, chinese_mix
+from openmodal.util.text.languages.symbols import symbols, language_tone_start_map, language_id_map
+from openmodal.view_object.text.languages import LanguagesEnum
 
-language_module_map = {"ZH": chinese, "JP": japanese, "EN": english, 'ZH_MIX_EN': chinese_mix, 'KR': korean,
-                    'FR': french, 'SP': spanish, 'ES': spanish}
+language_module_map = {LanguagesEnum.ZH: chinese, LanguagesEnum.JP: japanese, LanguagesEnum.EN: english,
+                       LanguagesEnum.ZH_MIX_EN: chinese_mix, LanguagesEnum.KR: korean,
+                       LanguagesEnum.FR: french, LanguagesEnum.SP: spanish, LanguagesEnum.ES: spanish}
 
 
-def clean_text(text, language):
+def clean_text(text, language, ckpt_bert_dir):
     language_module = language_module_map[language]
-    norm_text = language_module.text_normalize(text)
-    phones, tones, word2ph = language_module.g2p(norm_text)
+    norm_text = language_module.text_normalize(text) if hasattr(language_module,"text_normalize") else text
+    phones, tones, word2ph = language_module.g2p(norm_text, ckpt_bert_dir) \
+        if language == LanguagesEnum.ZH_MIX_EN or language == LanguagesEnum.ZH \
+        else language_module.g2p(norm_text)
     return norm_text, phones, tones, word2ph
 
 
 _symbol_to_id = {s: i for i, s in enumerate(symbols)}
-
-# language maps
-language_id_map = {"ZH": 0, "JP": 1, "EN": 2, "ZH_MIX_EN": 3, 'KR': 4, 'ES': 5, 'SP': 5 ,'FR': 6}
 
 
 def cleaned_text_to_sequence(cleaned_text, tones, language, symbol_to_id=None):

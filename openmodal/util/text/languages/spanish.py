@@ -166,11 +166,9 @@ def refine_syllables(syllables):
 
 
 
-def g2p(text, pad_start_end=True, tokenized=None):
+def g2p(text,ckpt_bert_dir='dccuchile/bert-base-spanish-wwm-uncased', pad_start_end=True, tokenized=None):
     if tokenized is None:
-        # model_id = 'pretrained_bert-base-uncased'
-        model_id = 'dccuchile/bert-base-spanish-wwm-uncased'
-        tokenizer = AutoTokenizer.from_pretrained(model_id)
+        tokenizer = AutoTokenizer.from_pretrained(ckpt_bert_dir)
         tokenized = tokenizer.tokenize(text)
     # import pdb; pdb.set_trace()
     phs = []

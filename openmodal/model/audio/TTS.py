@@ -32,7 +32,6 @@ class MeloTTS(BaseModel):
     The MeloTTS model is open-sourced by the OpenVoice team.
     https://github.com/myshell-ai/OpenVoice
     """
-
     def __init__(self,
                  language,
                  use_hf=True,
@@ -40,7 +39,7 @@ class MeloTTS(BaseModel):
                  ckpt_path=None,
                  *args,
                  **kwargs):
-        super().__init__(*args, **kwargs)
+        super().__init__(*args,**kwargs)
         # config_path =
         hps = load_or_download_config(language, use_hf=use_hf, config_path=config_path)
 
@@ -56,7 +55,7 @@ class MeloTTS(BaseModel):
             num_tones=num_tones,
             num_languages=num_languages,
             **hps.model,
-        ).to(self.device)
+        ).to( self.device)
 
         model.eval()
         self.model = model
@@ -64,7 +63,7 @@ class MeloTTS(BaseModel):
         self.hps = hps
 
         # load state_dict
-        checkpoint_dict = load_or_download_model(language, self.device, use_hf=use_hf, ckpt_path=ckpt_path)
+        checkpoint_dict = load_or_download_model(language,  self.device, use_hf=use_hf, ckpt_path=ckpt_path)
         self.model.load_state_dict(checkpoint_dict['model'], strict=True)
 
         language = language.split('_')[0]
@@ -79,11 +78,12 @@ class MeloTTS(BaseModel):
         audio_segments = np.array(audio_segments).astype(np.float32)
         return audio_segments
 
+
     def tts_to_file(self, text, speaker_id, output_path=None, sdp_ratio=0.2, noise_scale=0.6, noise_scale_w=0.8,
                     speed=1.0, format=None ):
         language = self.language
 
-        texts = split_sentence(text, language_str=language)
+        texts = split_sentence(text, language=language)
         print(" > Text split to sentences.")
         print('\n'.join(texts))
         print(" > ===========================")
@@ -667,7 +667,7 @@ def get_bert(norm_text, word2ph, language, device):
     from openmodal.model.text.pretrained_bert.chinese_bert import get_bert_feature as zh_bert
     from openmodal.model.text.pretrained_bert.english_bert import get_bert_feature as en_bert
     from openmodal.model.text.pretrained_bert.japanese_bert import get_bert_feature as jp_bert
-    from openmodal.model.text.pretrained_bert.chinese_mix import get_bert_feature as zh_mix_en_bert
+    from openmodal.util.text.languages.chinese_mix import get_bert_feature as zh_mix_en_bert
     from openmodal.model.text.pretrained_bert.spanish_bert import get_bert_feature as sp_bert
     from openmodal.model.text.pretrained_bert.french_bert import get_bert_feature as fr_bert
     from openmodal.util.text.languages.korean import get_bert_feature as kr_bert

@@ -93,11 +93,8 @@ def distribute_phone(n_phone, n_word):
 
 
 
-def g2p(norm_text):
-    # tokenizer = AutoTokenizer.from_pretrained('cl-tohoku/bert-base-japanese-v3')
-
-    model_id = 'kykim/bert-kor-base'
-    tokenizer = AutoTokenizer.from_pretrained(model_id)
+def g2p(norm_text,ckpt_bert_dir='kykim/bert-kor-base'):
+    tokenizer = AutoTokenizer.from_pretrained(ckpt_bert_dir)
     tokenized = tokenizer.tokenize(norm_text)
     phs = []
     ph_groups = []
@@ -141,10 +138,9 @@ def g2p(norm_text):
     assert len(word2ph) == len(tokenized) + 2
     return phones, tones, word2ph
 
-def get_bert_feature(text, word2ph, device='cuda'):
-    model_id = 'kykim/bert-kor-base'
+def get_bert_feature(text, word2ph,ckpt_bert_dir='kykim/bert-kor-base', device='cuda'):
     from openmodal.model.text.pretrained_bert.japanese_bert import get_bert_feature
-    return get_bert_feature(text, word2ph, device=device, model_id=model_id)
+    return get_bert_feature(text, word2ph, device=device, ckpt_bert_dir=ckpt_bert_dir)
 
 
 if __name__ == "__main__":

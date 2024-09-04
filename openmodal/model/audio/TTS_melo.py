@@ -24,6 +24,7 @@ from openmodal.module.audio.posterior_encoder import PosteriorEncoder
 from openmodal.module.audio.reference_encoder import ReferenceEncoder
 from openmodal.process.text.text_cleaner import clean_text, cleaned_text_to_sequence
 from openmodal.util.text import split_sentence
+from openmodal.view_object.text.languages import LanguagesEnum
 
 
 @ModelBase.register_module(name="MeloTTS")
@@ -34,14 +35,14 @@ class MeloTTS(BaseModel):
     """
     def __init__(self,
                  language,
-                 use_hf=True,
+                 ckpt_bert_dir=None,
                  config_path=None,
                  ckpt_path=None,
                  *args,
                  **kwargs):
         super().__init__(*args,**kwargs)
         # config_path =
-        hps = load_or_download_config(language, use_hf=use_hf, config_path=config_path)
+        hps = load_or_download_config(language,  config_path=config_path)
 
         num_languages = hps.num_languages
         num_tones = hps.num_tones
@@ -63,11 +64,12 @@ class MeloTTS(BaseModel):
         self.hps = hps
 
         # load state_dict
-        checkpoint_dict = load_or_download_model(language,  self.device, use_hf=use_hf, ckpt_path=ckpt_path)
+        checkpoint_dict = load_or_download_model(language,  self.device, ckpt_path=ckpt_path)
         self.model.load_state_dict(checkpoint_dict['model'], strict=True)
 
         language = language.split('_')[0]
         self.language = 'ZH_MIX_EN' if language == 'ZH' else language  # we support a ZH_MIX_EN model
+        self.ckpt_bert_dir = ckpt_bert_dir
 
     @staticmethod
     def audio_numpy_concat(segment_data_list, sr, speed=1.):
@@ -80,30 +82,21 @@ class MeloTTS(BaseModel):
 
 
     def tts_to_file(self, text, speaker_id, output_path=None, sdp_ratio=0.2, noise_scale=0.6, noise_scale_w=0.8,
-                    speed=1.0, pbar=None, format=None, position=None, quiet=False, ):
+                    speed=1.0, format=None ):
         language = self.language
 
-        texts = split_sentence(text, language_str=language)
+        texts = split_sentence(text, language=language)
         print(" > Text split to sentences.")
         print('\n'.join(texts))
         print(" > ===========================")
 
         audio_list = []
-        if pbar:
-            tx = pbar(texts)
-        else:
-            if position:
-                tx = tqdm(texts, position=position)
-            elif quiet:
-                tx = texts
-            else:
-                tx = tqdm(texts)
-        for t in tx:
-            if language in ['EN', 'ZH_MIX_EN']:
+        for t in tqdm(texts):
+            if language in [LanguagesEnum.EN, LanguagesEnum.ZH_MIX_EN]:
                 # split the audio by capital letters
                 t = re.sub(r'([a-z])([A-Z])', r'\1 \2', t)
             device = self.device
-            bert, ja_bert, phones, tones, lang_ids = get_text_for_tts_infer(t, language, self.hps, device,
+            bert, ja_bert, phones, tones, lang_ids = get_text_for_tts_infer(t, language, self.hps, self.ckpt_bert_dir,device,
                                                                             self.symbol_to_id)
             with torch.no_grad():
                 x_tst = phones.to(device).unsqueeze(0)
@@ -498,15 +491,11 @@ def get_hparams_from_file(config_path):
     return hparams
 
 
-def load_or_download_config(locale, use_hf=True, config_path=None):
+def load_or_download_config(locale, config_path=None):
     if config_path is None:
         language = locale.split('-')[0].upper()
-        if use_hf:
-            assert language in LANG_TO_HF_REPO_ID
-            config_path = hf_hub_download(repo_id=LANG_TO_HF_REPO_ID[language], filename="config.json")
-        else:
-            assert language in DOWNLOAD_CONFIG_URLS
-            config_path = cached_path(DOWNLOAD_CONFIG_URLS[language])
+        assert language in LANG_TO_HF_REPO_ID
+        config_path = hf_hub_download(repo_id=LANG_TO_HF_REPO_ID[language], filename="config.json")
     return get_hparams_from_file(config_path)
 
 
@@ -522,14 +511,15 @@ def load_or_download_model(locale, device, use_hf=True, ckpt_path=None):
     return torch.load(ckpt_path, map_location=device)
 
 
-def get_text_for_tts_infer(text, language_str, hps, device, symbol_to_id=None):
-    norm_text, phone, tone, word2ph = clean_text(text, language_str)
+def get_text_for_tts_infer(text, language_str, hps,ckpt_bert_dir, device, symbol_to_id=None):
+    norm_text, phone, tone, word2ph = clean_text(text, language_str,ckpt_bert_dir)
     phone, tone, language = cleaned_text_to_sequence(phone, tone, language_str, symbol_to_id)
 
     if hps.data.add_blank:
         phone = intersperse(phone, 0)
         tone = intersperse(tone, 0)
         language = intersperse(language, 0)
+        # todo: 是否需要针对phone和tone分别进行embedding，仍待考究
         for i in range(len(word2ph)):
             word2ph[i] = word2ph[i] * 2
         word2ph[0] += 1
@@ -538,7 +528,7 @@ def get_text_for_tts_infer(text, language_str, hps, device, symbol_to_id=None):
         bert = torch.zeros(1024, len(phone))
         ja_bert = torch.zeros(768, len(phone))
     else:
-        bert = get_bert(norm_text, word2ph, language_str, device)
+        bert = get_bert(norm_text, word2ph, language_str,ckpt_bert_dir, device)
         del word2ph
         assert bert.shape[-1] == len(phone), phone
 
@@ -672,16 +662,16 @@ def convert_pad_shape(pad_shape):
     return pad_shape
 
 
-def get_bert(norm_text, word2ph, language, device):
+def get_bert(norm_text, word2ph, language,ckpt_bert_dir, device):
     from openmodal.model.text.pretrained_bert.chinese_bert import get_bert_feature as zh_bert
     from openmodal.model.text.pretrained_bert.english_bert import get_bert_feature as en_bert
     from openmodal.model.text.pretrained_bert.japanese_bert import get_bert_feature as jp_bert
-    from openmodal.model.text.pretrained_bert.chinese_mix import get_bert_feature as zh_mix_en_bert
+    from openmodal.util.text.languages.chinese_mix import get_bert_feature as zh_mix_en_bert
     from openmodal.model.text.pretrained_bert.spanish_bert import get_bert_feature as sp_bert
     from openmodal.model.text.pretrained_bert.french_bert import get_bert_feature as fr_bert
     from openmodal.util.text.languages.korean import get_bert_feature as kr_bert
 
     lang_bert_func_map = {"ZH": zh_bert, "EN": en_bert, "JP": jp_bert, 'ZH_MIX_EN': zh_mix_en_bert,
                           'FR': fr_bert, 'SP': sp_bert, 'ES': sp_bert, "KR": kr_bert}
-    bert = lang_bert_func_map[language](norm_text, word2ph, device)
+    bert = lang_bert_func_map[language](norm_text, word2ph, ckpt_bert_dir,device)
     return bert
