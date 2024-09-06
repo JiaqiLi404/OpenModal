@@ -11,7 +11,7 @@ T = TypeVar('T')
 
 
 def _accquire_lock() -> None:
-    """Acquire the module-level lock for serializing access to shared dataset.
+    """Acquire the component-level lock for serializing access to shared dataset.
 
     This should be released with _release_lock().
     """
@@ -20,7 +20,7 @@ def _accquire_lock() -> None:
 
 
 def _release_lock() -> None:
-    """Release the module-level lock acquired by calling _accquire_lock()."""
+    """Release the component-level lock acquired by calling _accquire_lock()."""
     if _lock:
         _lock.release()
 
@@ -214,10 +214,10 @@ def get_installed_path(package: str) -> str:
 
     from pkg_resources import DistributionNotFound, get_distribution
 
-    # if the package name is not the same as module name, module name should be
-    # inferred. For example, mmcv-full is the package name, but mmcv is module
+    # if the package name is not the same as component name, component name should be
+    # inferred. For example, mmcv-full is the package name, but mmcv is component
     # name. If we want to get the installed path of mmcv-full, we should concat
-    # the pkg.location and module name
+    # the pkg.location and component name
     try:
         pkg = get_distribution(package)
     except DistributionNotFound as e:
@@ -244,10 +244,10 @@ def get_installed_path(package: str) -> str:
 
 
 def package2module(package: str):
-    """Infer module name from package.
+    """Infer component name from package.
 
     Args:
-        package (str): Package to infer module name.
+        package (str): Package to infer component name.
     """
     from pkg_resources import get_distribution
     pkg = get_distribution(package)
@@ -255,7 +255,7 @@ def package2module(package: str):
         module_name = pkg.get_metadata('top_level.txt').split('\n')[0]
         return module_name
     else:
-        raise ValueError(f'can not infer the module name of {package}')
+        raise ValueError(f'can not infer the component name of {package}')
 
 
 def call_command(cmd: list) -> None:

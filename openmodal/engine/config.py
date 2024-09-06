@@ -40,7 +40,7 @@ def import_modules_from_strings(imports, allow_failed_imports=False):
     """Import modules from the given list of strings.
 
     Args:
-        imports (list | str | None): The given module names to be imported.
+        imports (list | str | None): The given component names to be imported.
         allow_failed_imports (bool): If True, the failed imports will return
             None. Otherwise, an ImportError is raise. Defaults to False.
 
@@ -434,7 +434,7 @@ class Config:
                 err_msg += (
                     '\nYou should set `PYTHONPATH` to make `sys.path` '
                     'include the directory which contains your custom '
-                    'module')
+                    'component')
                 raise ImportError(err_msg) from e
         return Config(
             cfg_dict,

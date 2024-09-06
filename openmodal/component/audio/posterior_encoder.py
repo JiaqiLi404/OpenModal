@@ -1,7 +1,7 @@
 import torch.nn as nn
 import torch
 
-from openmodal.block.audio.wave_net import WaveNet
+from openmodal.component.audio.wave_net import WaveNet
 
 
 class PosteriorEncoder(nn.Module):

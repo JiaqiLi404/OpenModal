@@ -18,7 +18,7 @@ class Registry:
     def _register_module(self, module: Type = None, module_name: Optional[Union[str, List[str]]] = None):
         if not callable(module):
             raise TypeError(
-                f'module must be Callable, but got {type(module)}')
+                f'component must be Callable, but got {type(module)}')
         if isinstance(module_name, str):
             module_name = [module_name]
 
@@ -26,7 +26,7 @@ class Registry:
             if name is None:
                 name = module.__name__
             if name in self._modules_:
-                print("module is already registered in " + name)
+                print("component is already registered in " + name)
             self._modules_[name] = module
         # print(f"Register {module_name} in {self._name}")
 
@@ -40,7 +40,7 @@ class Registry:
                 'name must be None, an instance of str, or a sequence of str, '
                 f'but got {type(name)}')
 
-        # use it as a normal method: x.register_module(module=SomeClass)
+        # use it as a normal method: x.register_module(component=SomeClass)
         if module is not None:
             self._register_module(module=module, module_name=name)
             return module
@@ -82,7 +82,7 @@ FlowBase = Registry("flow", parent=MainBase)
 
 ModelBase = Registry("model", parent=MainBase)
 
-ModuleBase=Registry("module",parent=MainBase)
+ComponentBase=Registry("component",parent=MainBase)
 
 BlockBase = Registry("block", parent=MainBase)
 

@@ -4,7 +4,7 @@ from torch.nn import functional as F
 import numpy as np
 
 from openmodal.block import attentions, Encoder
-from openmodal.block.audio.wave_net import WaveNet
+from openmodal.component.audio.wave_net import WaveNet
 
 
 class TransformerCouplingBlock(nn.Module):

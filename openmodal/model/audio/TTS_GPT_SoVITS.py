@@ -7,6 +7,7 @@ import numpy as np
 from tqdm import tqdm
 
 from huggingface_hub import hf_hub_download
+from pytorch_lightning import LightningModule
 
 from openmodal.engine import ModelBase
 from openmodal.model import BaseModel
@@ -16,22 +17,27 @@ from openmodal.util.text import split_sentence
 from openmodal.view_object.text.languages import LanguagesEnum
 
 
-@ModelBase.register_module(name="MeloTTS")
-class MeloTTS(BaseModel):
+@ModelBase.register_module(name="GPTSoVITS_TTS")
+class GPTSoVITS_TTS(BaseModel,LightningModule):
     """
-    The MeloTTS model is open-sourced by the OpenVoice team.
-    https://github.com/myshell-ai/OpenVoice
+    The GPTSoVITS_TTS model is open-sourced by
+    https://github.com/RVC-Boss/GPT-SoVITS
     """
-
     def __init__(self,
                  language,
                  ckpt_bert_dir=None,
                  ckpt_path=None,
+                 water_mark=None,
+                 is_train=False,
                  *args,
                  **kwargs):
-        super().__init__(*args, **kwargs)
-        # config_path =
-        hps = load_or_download_config(ckpt_path)
+        super().__init__(device=None,*args, **kwargs)
+        # load state_dict
+        checkpoint_dict,hps = load_or_download_model(ckpt_path, self.device)
+
+        pretrained_s1 = hps.get("pretrained_s1",None)
+        if is_train and pretrained_s1:
+            print(self.load_state_dict(torch.load(pretrained_s1, map_location="cpu")["weight"]))
 
         num_languages = hps.num_languages
         num_tones = hps.num_tones
@@ -52,8 +58,7 @@ class MeloTTS(BaseModel):
         self.symbol_to_id = {s: i for i, s in enumerate(symbols)}
         self.hps = hps
 
-        # load state_dict
-        checkpoint_dict = load_or_download_model(ckpt_path, self.device)
+
         self.model.load_state_dict(checkpoint_dict['model'], strict=True)
 
         language = language.split('_')[0]
@@ -69,8 +74,8 @@ class MeloTTS(BaseModel):
         audio_segments = np.array(audio_segments).astype(np.float32)
         return audio_segments
 
-    def tts_to_file(self, text, speaker_id, output_path=None, sdp_ratio=0.2, noise_scale=0.6, noise_scale_w=0.8,
-                    speed=1.0, format=None):
+    def forward(self, text, speaker_id, output_path=None, sdp_ratio=0.2, noise_scale=0.6, noise_scale_w=0.8,
+                speed=1.0, format=None):
         language = self.language
 
         texts = split_sentence(text, language=language)
@@ -115,13 +120,12 @@ class MeloTTS(BaseModel):
         torch.cuda.empty_cache()
         audio = self.audio_numpy_concat(audio_list, sr=self.hps.data.sampling_rate, speed=speed)
 
-        if output_path is None:
-            return audio
-        else:
+        if output_path is not None:
             if format:
                 soundfile.write(output_path, audio, self.hps.data.sampling_rate, format=format)
             else:
                 soundfile.write(output_path, audio, self.hps.data.sampling_rate)
+        return audio
 
 
 class HParams:
@@ -165,20 +169,35 @@ def get_hparams_from_file(config_path):
     return hparams
 
 
-def load_or_download_config(config_path):
-    if os.path.exists(os.path.join(config_path, "config.json")):
-        config_path=os.path.join(config_path, "config.json")
-    else:
-        config_path = hf_hub_download(repo_id=config_path, filename="config.json")
-    return get_hparams_from_file(config_path)
-
-
 def load_or_download_model(ckpt_path, device):
-    if os.path.exists(os.path.join(ckpt_path, "checkpoint.pth")):
-        ckpt_path = os.path.join(ckpt_path, "checkpoint.pth")
+    download_model,download_config=False,False
+    model_path,config_path=None,None
+    if not os.path.exists(ckpt_path):
+        download_model,download_config=True,True
     else:
-        ckpt_path = hf_hub_download(repo_id=ckpt_path, filename="checkpoint.pth")
-    return torch.load(ckpt_path, map_location=device)
+        files=os.listdir(ckpt_path)
+        model_files=[f for f in files if f.endswith('.pth') or f.endswith('.ckpt')]
+        if len(model_files)==0:
+            download_model=True
+        else:
+            model_path=os.path.join(ckpt_path,model_files[0])
+        config_files=[f for f in files if f.endswith('.json')]
+        if len(config_files)==0 and (len(model_files)!=0 and not model_files[0].endswith('.ckpt')):
+            download_config=True
+        elif len(config_files)!=0:
+            config_path=os.path.join(ckpt_path,config_files[0])
+    if download_model:
+        model_path = hf_hub_download(repo_id=ckpt_path, filename="checkpoint.pth")
+    if download_config:
+        config_path = hf_hub_download(repo_id=ckpt_path, filename="config.json")
+    if config_path is None:
+        model=torch.load(model_path, map_location="cpu")
+        config=model['config']
+        model=model['weight']
+    else:
+        model = torch.load(model_path, map_location=device)
+        config = get_hparams_from_file(config_path)
+    return model,config
 
 
 def get_text_for_tts_infer(text, language_str, hps, ckpt_bert_dir, device, symbol_to_id=None):

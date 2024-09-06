@@ -25,14 +25,17 @@ OpenModal is a foundational library for training multi-modal models based on PyT
 
 ## Supporting Customizing Modules:
 
+**Flow > Model > Component > Block**
+
 - **flow**: Here you could define the flow of the project, i.e. including data loading, preprocessing, augmentation,
   inferencing, etc.
-- **model**: Here you could define the model architecture.
-- **block**: Here you could define the building blocks of the model.
+- **model**: Here you could define the model architecture, e.g. including how many encoders or decoders, etc.
+- **component**: Here you could define the model components, e.g. the detail of the encoders or decoders.
+- **block**: Here you could define the building blocks of the components, e.g. the customized layers, residual blocks, etc.
 - **metric**: Here you could define the evaluation metrics.
 - **dataset**: Here you could define the dataset loaders.
 - **process**: Here you could define the additional processes, e.g. screening, augmenting, etc.
-- **view_object**: Here you could define the formal object-oriented model inputs and outputs.
+- **view_object**: Here you could define the formal object-oriented model for inputs and outputs, e.g. enums.
 - **visualization**: Here you could define the visualization functions.
 
 

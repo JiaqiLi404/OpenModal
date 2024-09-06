@@ -12,12 +12,12 @@ from openmodal.engine import Registry, MainBase, FlowBase, ModelBase, BlockBase,
 
 def build_module(name: str, cfg: Any, outer_built_modules: Dict[str, Any]) -> Any:
     """
-    Build the module according to the configuration.
+    Build the component according to the configuration.
     Also, we support recognizing the variables in the configuration and replace the {{XXX}} in configurations to the built modules.
     :param name: item name
     :param cfg: item configuration
     :param outer_built_modules: outer variable scope
-    :return: built module
+    :return: built component
     """
     private_built_modules = copy.copy(outer_built_modules)
     variable_rule = re.compile(r"\{\{[a-zA-Z0-9\-]+}}")

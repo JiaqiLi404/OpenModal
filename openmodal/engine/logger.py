@@ -368,7 +368,7 @@ def print_log(msg,
 
 
 def _get_world_size():
-    """Support using logging module without torch."""
+    """Support using logging component without torch."""
     try:
         # requires torch
         from mmengine.dist import get_world_size
@@ -379,7 +379,7 @@ def _get_world_size():
 
 
 def _get_rank():
-    """Support using logging module without torch."""
+    """Support using logging component without torch."""
     try:
         # requires torch
         from mmengine.dist import get_rank
