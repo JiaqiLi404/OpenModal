@@ -6,7 +6,8 @@ import os
 import librosa
 
 from openmodal.engine import ModelBase
-from openmodal.model.audio.TTS_melo import SynthesizerTrn, get_hparams_from_file
+from openmodal.model.audio.SoVITS_openvoice import OpenVoiceSoVITS
+from openmodal.model.audio.TTS_melo import  get_hparams_from_file
 
 
 @ModelBase.register_module(name="OpenVoiceToneColorConverter")
@@ -20,7 +21,7 @@ class OpenVoiceToneColorConverter(nn.Module):
         config_path = os.path.join(converter_ckpt, "converter", "config.json")
         hps = get_hparams_from_file(config_path)
 
-        model = SynthesizerTrn(
+        model = OpenVoiceSoVITS(
             len(getattr(hps, 'symbols', [])),
             hps.data.filter_length // 2 + 1,
             segment_size=None,
@@ -49,10 +50,6 @@ class OpenVoiceToneColorConverter(nn.Module):
         print("Loaded checkpoint '{}'".format(ckpt_path))
         print('missing/unexpected keys:', a, b)
 
-    def forward(self, input: torch.Tensor) -> torch.Tensor:
-
-        return input
-
     def extract_se(self, ref_wav_list, se_save_path=None):
         if isinstance(ref_wav_list, str):
             ref_wav_list = [ref_wav_list]
@@ -80,11 +77,12 @@ class OpenVoiceToneColorConverter(nn.Module):
 
         return gs
 
-    def convert(self, audio_src_path, src_se, tgt_se, output_path=None, tau=0.3):
+    def forward(self, audio, src_se, tgt_se, output_path=None, tau=0.3,source_sr=None):
         hps = self.hps
         # load audio
-        audio, sample_rate = librosa.load(audio_src_path, sr=hps.data.sampling_rate)
-        audio = torch.tensor(audio).float()
+        if source_sr is not None:
+            audio=librosa.resample(audio, source_sr, hps.data.sampling_rate, fix=True, scale=False)
+        audio = torch.from_numpy(audio).float()
 
         with torch.no_grad():
             y = torch.FloatTensor(audio).to(self.device)

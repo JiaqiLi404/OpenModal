@@ -69,8 +69,8 @@ class MeloTTS(BaseModel):
         audio_segments = np.array(audio_segments).astype(np.float32)
         return audio_segments
 
-    def forward(self, text, speaker_id, output_path=None, sdp_ratio=0.2, noise_scale=0.6, noise_scale_w=0.8,
-                speed=1.0, format=None):
+    def tts_to_file(self, text, speaker_id, output_path=None, sdp_ratio=0.2, noise_scale=0.6, noise_scale_w=0.8,
+                    speed=1.0, format=None):
         language = self.language
 
         texts = split_sentence(text, language=language)
@@ -115,12 +115,13 @@ class MeloTTS(BaseModel):
         torch.cuda.empty_cache()
         audio = self.audio_numpy_concat(audio_list, sr=self.hps.data.sampling_rate, speed=speed)
 
-        if output_path is not None:
+        if output_path is None:
+            return audio
+        else:
             if format:
                 soundfile.write(output_path, audio, self.hps.data.sampling_rate, format=format)
             else:
                 soundfile.write(output_path, audio, self.hps.data.sampling_rate)
-        return audio
 
 
 class HParams:
@@ -166,7 +167,7 @@ def get_hparams_from_file(config_path):
 
 def load_or_download_config(config_path):
     if os.path.exists(os.path.join(config_path, "config.json")):
-        config_path = os.path.join(config_path, "config.json")
+        config_path=os.path.join(config_path, "config.json")
     else:
         config_path = hf_hub_download(repo_id=config_path, filename="config.json")
     return get_hparams_from_file(config_path)

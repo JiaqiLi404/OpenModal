@@ -11,7 +11,7 @@ from openmodal.process.audio import speech_embedding
 @ModelBase.register_module(name="TTSToneColorConverterFlow")
 class TTSToneColorConverterFlow(BaseFlow):
     def __init__(self, tts_flow, converter_model, whisper_model_dir, output_dir: Union[str],
-                 output_format: Optional[str] = 'wav', clean_cache=True, *args, **kwargs):
+                 output_format: Optional[str] = 'wav', *args, **kwargs):
         """
         VoiceToneColorConverterFlow
         :param tts_flow: The TTS flow for generating general speech
@@ -19,56 +19,59 @@ class TTSToneColorConverterFlow(BaseFlow):
         :param whisper_model_dir: The whisper model directory
         :param output_dir: The output directory
         :param output_format: The output format
-        :param clean_cache: Whether to clean the cache of the TTS flow
         :param device:
         :param args:
         :param kwargs:
         """
-        super().__init__( *args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.tts_flow = tts_flow
         self.converter_model = converter_model
         self.whisper_model_dir = whisper_model_dir
         self.output_dir = output_dir
         self.output_format = output_format
-        self.clean_cache = clean_cache
 
-        self.tmp_dir = self.tts_flow.output_dir
-        self.tmp_format = self.tts_flow.output_format
         self.converter_ckpt = self.converter_model.converter_ckpt
 
     def run(self):
-        self.tts_flow.run()
-        os.makedirs(self.output_dir, exist_ok=True)
-
-        tmp_files = [f"{self.tmp_dir}/{x}" for x in os.listdir(self.tmp_dir) if x.endswith(self.tmp_format)]
+        texts = [
+            "使用无参考文本模式时建议使用微调的GPT，听不清参考音频说的啥(不晓得写啥)可以开。开启后无视填写的参考文本。"
+        ]
         references = [os.path.join('reference', "reference.m4a")]
-        if len(references) != 1 and len(references) != len(tmp_files):
+
+        speaker_ids = self.tts_flow.tts_model.hps.data.spk2id
+        if self.tts_flow.speaker is None or self.tts_flow.speaker not in speaker_ids:
+            self.tts_flow.speaker = list(speaker_ids.keys())[0]
+        self.tts_flow._speaker_id = speaker_ids[self.tts_flow.speaker]
+
+        if len(references) != 1 and len(references) != len(texts):
             raise ValueError("The number of references should be 1 or equal to the number of tmp files.")
         if len(references) == 1:
-            references = references * len(tmp_files)
+            references = references * len(texts)
+
+        os.makedirs(self.output_dir, exist_ok=True)
 
         self.converter_model.load_ckpt(f'{self.converter_ckpt}/converter/checkpoint.pth')
-        for i, file in tqdm(enumerate(tmp_files)):
-            self.forward(file, references[i])
-
-        if self.clean_cache:
-            for file in tmp_files:
-                os.remove(file)
+        for i, text in tqdm(enumerate(texts)):
+            if self.tts_flow is not None:
+                input = self.tts_flow.forward(text)
+            else:
+                input = text
+            self.forward(input, references[i], str(i))
 
         return self.output_dir
 
-    def forward(self, input_dir, reference):
+    def forward(self, input, reference, output_filename):
         target_se, audio_name = speech_embedding.get_se(reference, self.converter_model,
                                                         whisper_model=self.whisper_model_dir)
-        speaker_key = self.tts_flow.speaker.lower().replace('_', '-')
-        filename=os.path.basename(input_dir)
-        filename =os.path.splitext(filename)[0]
-        output_dir=f"{self.output_dir}/{filename}-output.{self.output_format}"
+        output_dir = f"{self.output_dir}/{output_filename}-output.{self.output_format}"
         if os.path.exists(output_dir):
             os.remove(output_dir)
-        self.converter_model.convert(
-            audio_src_path=input_dir,
+
+        speaker_key = self.tts_flow.speaker.lower().replace('_', '-')
+        self.converter_model.forward(
+            input,
             src_se=torch.load(f"{self.converter_ckpt}/base_speakers/ses/{speaker_key}.pth", map_location=self.device),
             tgt_se=target_se,
             output_path=output_dir,
+            source_sr=self.tts_flow.tts_model.hps.data.sampling_rate,
         )
