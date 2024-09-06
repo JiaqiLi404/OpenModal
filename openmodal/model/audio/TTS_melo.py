@@ -10,7 +10,7 @@ from huggingface_hub import hf_hub_download
 
 from openmodal.engine import ModelBase
 from openmodal.model import BaseModel
-from openmodal.model.audio.SoVITS_openvoice import OpenVoiceSoVITS
+from openmodal.component.audio.SoVITS_openvoice import OpenVoiceSoVITS
 from openmodal.process.text.text_cleaner import clean_text, cleaned_text_to_sequence
 from openmodal.util.text import split_sentence
 from openmodal.view_object.text.languages import LanguagesEnum

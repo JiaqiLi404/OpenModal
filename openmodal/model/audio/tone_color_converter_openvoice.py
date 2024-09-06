@@ -6,7 +6,7 @@ import os
 import librosa
 
 from openmodal.engine import ModelBase
-from openmodal.model.audio.SoVITS_openvoice import OpenVoiceSoVITS
+from openmodal.component.audio.SoVITS_openvoice import OpenVoiceSoVITS
 from openmodal.model.audio.TTS_melo import  get_hparams_from_file
 
 
