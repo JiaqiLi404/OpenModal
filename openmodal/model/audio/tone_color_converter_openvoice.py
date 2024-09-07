@@ -6,20 +6,18 @@ import os
 import librosa
 
 from openmodal.engine import ModelBase
-from openmodal.component.audio.SoVITS_openvoice import OpenVoiceSoVITS
-from openmodal.model.audio.TTS_melo import  get_hparams_from_file
+from openmodal.component.audio.SoVITS import OpenVoiceSoVITS
+from openmodal.model import BaseModel
 
 
 @ModelBase.register_module(name="OpenVoiceToneColorConverter")
-class OpenVoiceToneColorConverter(nn.Module):
-    def __init__(self, converter_ckpt, water_mark=None, device='cuda:0', *args, **kwargs):
-        super().__init__()
-        if 'cuda' in device:
-            assert torch.cuda.is_available()
+class OpenVoiceToneColorConverter(BaseModel):
+    def __init__(self, converter_ckpt, water_mark=None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
         self.converter_ckpt = converter_ckpt
         config_path = os.path.join(converter_ckpt, "converter", "config.json")
-        hps = get_hparams_from_file(config_path)
+        hps = self.get_hparams_from_file(config_path)
 
         model = OpenVoiceSoVITS(
             len(getattr(hps, 'symbols', [])),
@@ -30,12 +28,11 @@ class OpenVoiceToneColorConverter(nn.Module):
             num_languages=None,
             use_transformer_flow=False,
             **hps.model,
-        ).to(device)
+        ).to(self.device)
 
         model.eval()
         self.model = model
         self.hps = hps
-        self.device = device
         self.watermark = water_mark
 
         if water_mark is not None:

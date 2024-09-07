@@ -1,69 +1,148 @@
 import re
-import os
-import json
+from typing import Dict
 import torch
 import soundfile
 import numpy as np
 from tqdm import tqdm
-
-from huggingface_hub import hf_hub_download
 from pytorch_lightning import LightningModule
 
+from openmodal.component.audio.text2Semantic_GPT_SoVITS import Text2SemanticDecoder
 from openmodal.engine import ModelBase
 from openmodal.model import BaseModel
-from openmodal.component.audio.SoVITS_openvoice import OpenVoiceSoVITS
 from openmodal.process.text.text_cleaner import clean_text, cleaned_text_to_sequence
 from openmodal.util.text import split_sentence
+from openmodal.util.text.languages.symbols import symbols as openmodal_symbols, \
+    num_languages as openmodal_num_languages, language_tone_num_map
 from openmodal.view_object.text.languages import LanguagesEnum
 
 
 @ModelBase.register_module(name="GPTSoVITS_TTS")
-class GPTSoVITS_TTS(BaseModel,LightningModule):
+class GPTSoVITS_TTS(BaseModel, LightningModule):
     """
     The GPTSoVITS_TTS model is open-sourced by
     https://github.com/RVC-Boss/GPT-SoVITS
     """
+
     def __init__(self,
                  language,
-                 ckpt_bert_dir=None,
                  ckpt_path=None,
+                 ckpt_bert_dir=None,
                  water_mark=None,
                  is_train=False,
+                 is_half =True,
                  *args,
                  **kwargs):
-        super().__init__(device=None,*args, **kwargs)
-        # load state_dict
-        checkpoint_dict,hps = load_or_download_model(ckpt_path, self.device)
+        super().__init__(device=None, *args, **kwargs)
+        if ckpt_path is not None:
+            # load state_dict
+            checkpoint_dict, hps = self.load_or_download_model(ckpt_path, self.device)
 
-        pretrained_s1 = hps.get("pretrained_s1",None)
-        if is_train and pretrained_s1:
-            print(self.load_state_dict(torch.load(pretrained_s1, map_location="cpu")["weight"]))
+            num_languages = hps.get('num_languages', openmodal_num_languages)
+            num_tones = hps.get('num_tones', language_tone_num_map[language])
+            symbols = hps.get('symbols', openmodal_symbols)
 
-        num_languages = hps.num_languages
-        num_tones = hps.num_tones
-        symbols = hps.symbols
+            model_dim = hps.model.get("hidden_dim", None)
+            embedding_dim = hps.model.get("embedding_dim", None)
+            num_head = hps.model.get("head", None)
+            num_layers = hps.model.get("n_layer", None)
+            vocab_size = hps.model.get("vocab_size", len(symbols))
+            phoneme_vocab_size = hps.model.get("phoneme_vocab_size", None)
+            p_dropout = hps.model.get("dropout", None)
+            EOS = hps.model.get("EOS", None)
 
-        model = OpenVoiceSoVITS(
-            len(symbols),
-            hps.data.filter_length // 2 + 1,
-            hps.train.segment_size // hps.data.hop_length,
-            n_speakers=hps.data.n_speakers,
-            num_tones=num_tones,
-            num_languages=num_languages,
-            **hps.model,
-        ).to(self.device)
+            pretrained_s1 = hps.get("pretrained_s1", None)
+        else:
+            num_languages = openmodal_num_languages
+            num_tones = language_tone_num_map[language]
+            symbols = openmodal_symbols
+            model_dim = 512
+            embedding_dim = 512
+            num_head = 16
+            num_layers = 24
+            vocab_size = len(symbols)
+            phoneme_vocab_size = 732
+            p_dropout = 0
+            EOS = 0
 
-        model.eval()
+        model = Text2SemanticDecoder(
+            model_dim=model_dim,
+            embedding_dim=embedding_dim,
+            num_head=num_head,
+            num_layers=num_layers,
+            vocab_size=vocab_size,
+            phoneme_vocab_size=phoneme_vocab_size,
+            p_dropout=p_dropout,
+            EOS=EOS,
+        )
         self.model = model
-        self.symbol_to_id = {s: i for i, s in enumerate(symbols)}
         self.hps = hps
+        self.symbol_to_id = {s: i for i, s in enumerate(symbols)}
 
-
-        self.model.load_state_dict(checkpoint_dict['model'], strict=True)
+        if is_train:
+            self.automatic_optimization = False
+            self.save_hyperparameters()
+            model.train()
+            if pretrained_s1:
+                print(self.load_state_dict(torch.load(pretrained_s1, map_location="cpu")["weight"]))
+        else:
+            self.load_state_dict(checkpoint_dict, strict=True)
+            model.eval()
 
         language = language.split('_')[0]
         self.language = 'ZH_MIX_EN' if language == 'ZH' else language  # we support a ZH_MIX_EN model
         self.ckpt_bert_dir = ckpt_bert_dir
+
+        if is_half:
+            self.half()
+        self.to(self.device)
+        total = sum([param.nelement() for param in self.parameters()])
+        print("\nName of model: %s" % (self._get_name()))
+        print("Number of parameter: %.2fM" % (total / 1e6))
+
+    def training_step(self, batch: Dict, batch_idx: int):
+        opt = self.optimizers()
+        scheduler = self.lr_schedulers()
+        forward = self.model.forward if self.config["train"].get("if_dpo",
+                                                                 False) == True else self.model.forward_old
+        loss, acc = forward(
+            batch["phoneme_ids"],
+            batch["phoneme_ids_len"],
+            batch["semantic_ids"],
+            batch["semantic_ids_len"],
+            batch["bert_feature"],
+        )
+        self.manual_backward(loss)
+        if batch_idx > 0 and batch_idx % 4 == 0:
+            opt.step()
+            opt.zero_grad()
+            scheduler.step()
+
+        self.log(
+            "total_loss",
+            loss,
+            on_step=True,
+            on_epoch=True,
+            prog_bar=True,
+            sync_dist=True,
+        )
+        self.log(
+            "lr",
+            scheduler.get_last_lr()[0],
+            on_epoch=True,
+            prog_bar=True,
+            sync_dist=True,
+        )
+        self.log(
+            f"top_{self.top_k}_acc",
+            acc,
+            on_step=True,
+            on_epoch=True,
+            prog_bar=True,
+            sync_dist=True,
+        )
+
+    def validation_step(self, batch: Dict, batch_idx: int):
+        return
 
     @staticmethod
     def audio_numpy_concat(segment_data_list, sr, speed=1.):
@@ -126,78 +205,6 @@ class GPTSoVITS_TTS(BaseModel,LightningModule):
             else:
                 soundfile.write(output_path, audio, self.hps.data.sampling_rate)
         return audio
-
-
-class HParams:
-    def __init__(self, **kwargs):
-        for k, v in kwargs.items():
-            if type(v) == dict:
-                v = HParams(**v)
-            self[k] = v
-
-    def keys(self):
-        return self.__dict__.keys()
-
-    def items(self):
-        return self.__dict__.items()
-
-    def values(self):
-        return self.__dict__.values()
-
-    def __len__(self):
-        return len(self.__dict__)
-
-    def __getitem__(self, key):
-        return getattr(self, key)
-
-    def __setitem__(self, key, value):
-        return setattr(self, key, value)
-
-    def __contains__(self, key):
-        return key in self.__dict__
-
-    def __repr__(self):
-        return self.__dict__.__repr__()
-
-
-def get_hparams_from_file(config_path):
-    with open(config_path, "r", encoding="utf-8") as f:
-        data = f.read()
-    config = json.loads(data)
-
-    hparams = HParams(**config)
-    return hparams
-
-
-def load_or_download_model(ckpt_path, device):
-    download_model,download_config=False,False
-    model_path,config_path=None,None
-    if not os.path.exists(ckpt_path):
-        download_model,download_config=True,True
-    else:
-        files=os.listdir(ckpt_path)
-        model_files=[f for f in files if f.endswith('.pth') or f.endswith('.ckpt')]
-        if len(model_files)==0:
-            download_model=True
-        else:
-            model_path=os.path.join(ckpt_path,model_files[0])
-        config_files=[f for f in files if f.endswith('.json')]
-        if len(config_files)==0 and (len(model_files)!=0 and not model_files[0].endswith('.ckpt')):
-            download_config=True
-        elif len(config_files)!=0:
-            config_path=os.path.join(ckpt_path,config_files[0])
-    if download_model:
-        model_path = hf_hub_download(repo_id=ckpt_path, filename="checkpoint.pth")
-    if download_config:
-        config_path = hf_hub_download(repo_id=ckpt_path, filename="config.json")
-    if config_path is None:
-        model=torch.load(model_path, map_location="cpu")
-        config=model['config']
-        model=model['weight']
-    else:
-        model = torch.load(model_path, map_location=device)
-        config = get_hparams_from_file(config_path)
-    return model,config
 
 
 def get_text_for_tts_infer(text, language_str, hps, ckpt_bert_dir, device, symbol_to_id=None):

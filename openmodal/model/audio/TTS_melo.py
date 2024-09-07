@@ -1,19 +1,16 @@
 import re
-import os
-import json
 import torch
 import soundfile
 import numpy as np
 from tqdm import tqdm
 
-from huggingface_hub import hf_hub_download
-
 from openmodal.engine import ModelBase
 from openmodal.model import BaseModel
-from openmodal.component.audio.SoVITS_openvoice import OpenVoiceSoVITS
+from openmodal.component.audio.SoVITS import OpenVoiceSoVITS
 from openmodal.process.text.text_cleaner import clean_text, cleaned_text_to_sequence
 from openmodal.util.text import split_sentence
 from openmodal.view_object.text.languages import LanguagesEnum
+from openmodal.util.text.languages.symbols import symbols as openmodal_symbols, language_tone_num_map,num_languages as openmodal_num_languages
 
 
 @ModelBase.register_module(name="MeloTTS")
@@ -25,17 +22,23 @@ class MeloTTS(BaseModel):
 
     def __init__(self,
                  language,
-                 ckpt_bert_dir=None,
                  ckpt_path=None,
+                 ckpt_bert_dir=None,
+                 water_mark=None,
+                 is_train=False,
                  *args,
                  **kwargs):
         super().__init__(*args, **kwargs)
-        # config_path =
-        hps = load_or_download_config(ckpt_path)
+        if ckpt_path is not None:
+            checkpoint_dict, hps = self.load_or_download_model(ckpt_path, self.device)
 
-        num_languages = hps.num_languages
-        num_tones = hps.num_tones
-        symbols = hps.symbols
+            num_languages = hps.num_languages
+            num_tones = hps.num_tones
+            symbols = hps.symbols
+        else:
+            num_languages = openmodal_num_languages
+            num_tones = language_tone_num_map[language]
+            symbols = openmodal_symbols
 
         model = OpenVoiceSoVITS(
             len(symbols),
@@ -46,15 +49,16 @@ class MeloTTS(BaseModel):
             num_languages=num_languages,
             **hps.model,
         ).to(self.device)
-
-        model.eval()
         self.model = model
         self.symbol_to_id = {s: i for i, s in enumerate(symbols)}
         self.hps = hps
 
-        # load state_dict
-        checkpoint_dict = load_or_download_model(ckpt_path, self.device)
-        self.model.load_state_dict(checkpoint_dict['model'], strict=True)
+        if is_train:
+            model.train()
+        else:
+            model.eval()
+            # load state_dict
+            self.model.load_state_dict(checkpoint_dict, strict=True)
 
         language = language.split('_')[0]
         self.language = 'ZH_MIX_EN' if language == 'ZH' else language  # we support a ZH_MIX_EN model
@@ -121,63 +125,6 @@ class MeloTTS(BaseModel):
             else:
                 soundfile.write(output_path, audio, self.hps.data.sampling_rate)
         return audio
-
-
-class HParams:
-    def __init__(self, **kwargs):
-        for k, v in kwargs.items():
-            if type(v) == dict:
-                v = HParams(**v)
-            self[k] = v
-
-    def keys(self):
-        return self.__dict__.keys()
-
-    def items(self):
-        return self.__dict__.items()
-
-    def values(self):
-        return self.__dict__.values()
-
-    def __len__(self):
-        return len(self.__dict__)
-
-    def __getitem__(self, key):
-        return getattr(self, key)
-
-    def __setitem__(self, key, value):
-        return setattr(self, key, value)
-
-    def __contains__(self, key):
-        return key in self.__dict__
-
-    def __repr__(self):
-        return self.__dict__.__repr__()
-
-
-def get_hparams_from_file(config_path):
-    with open(config_path, "r", encoding="utf-8") as f:
-        data = f.read()
-    config = json.loads(data)
-
-    hparams = HParams(**config)
-    return hparams
-
-
-def load_or_download_config(config_path):
-    if os.path.exists(os.path.join(config_path, "config.json")):
-        config_path = os.path.join(config_path, "config.json")
-    else:
-        config_path = hf_hub_download(repo_id=config_path, filename="config.json")
-    return get_hparams_from_file(config_path)
-
-
-def load_or_download_model(ckpt_path, device):
-    if os.path.exists(os.path.join(ckpt_path, "checkpoint.pth")):
-        ckpt_path = os.path.join(ckpt_path, "checkpoint.pth")
-    else:
-        ckpt_path = hf_hub_download(repo_id=ckpt_path, filename="checkpoint.pth")
-    return torch.load(ckpt_path, map_location=device)
 
 
 def get_text_for_tts_infer(text, language_str, hps, ckpt_bert_dir, device, symbol_to_id=None):

@@ -2,7 +2,9 @@
 from openmodal.view_object.text.languages import LanguagesEnum
 
 punctuation = ["!", "?", "…", ",", ".", "'", "-", "¿", "¡"]
-pu_symbols = punctuation + ["SP", "UNK"]
+# pu_symbols = punctuation + ["SP", "UNK"]
+punctuation.append("-")
+pu_symbols = punctuation + ["SP", "SP2", "SP3", "UNK"]
 pad = "_"
 
 arpa = {
@@ -570,6 +572,8 @@ cantonese_symbols = {'Yeot3', 'Yip1', 'Yyu3', 'Yeng4', 'Yut5', 'Yaan5', 'Ym5', '
                      'You4', 'Yik6', 'Yui1', 'Yaat1', 'Yeot4', 'Yi2', 'Yaai1', 'Yek5', 'Ym3', 'Yong6', 'You5', 'Yyun1',
                      'Yn1', 'Yo2', 'Yip6', 'Yui3', 'Yaak5', 'Yyun2'}
 
+num_cantonese_tones = 6
+
 # combine all symbols
 normal_symbols = sorted(
     set(zh_symbols + ja_symbols + en_symbols + kr_symbols + es_symbols + fr_symbols + de_symbols + ru_symbols))
@@ -577,12 +581,27 @@ symbols = [pad] + normal_symbols + pu_symbols + zh_symbols_withtone + list(arpa)
 sil_phonemes_ids = [symbols.index(i) for i in pu_symbols]
 
 # combine all tones
-num_tones = num_zh_tones + num_ja_tones + num_en_tones + num_kr_tones + num_es_tones + num_fr_tones + num_de_tones + num_ru_tones
+num_tones = num_zh_tones + num_ja_tones + num_en_tones + num_kr_tones + num_es_tones + num_fr_tones + num_de_tones + num_ru_tones + num_cantonese_tones
 
 # language maps
 language_id_map = {LanguagesEnum.ZH: 0, LanguagesEnum.JP: 1, LanguagesEnum.EN: 2, LanguagesEnum.ZH_MIX_EN: 3,
-                   LanguagesEnum.KR: 4, LanguagesEnum.ES: 5, LanguagesEnum.SP: 5, LanguagesEnum.FR: 6}
-num_languages = len(language_id_map.keys())
+                   LanguagesEnum.KR: 4, LanguagesEnum.ES: 5, LanguagesEnum.SP: 5, LanguagesEnum.FR: 6,
+                   LanguagesEnum.DE: 7, LanguagesEnum.RU: 8, LanguagesEnum.ZH_CA: 9}
+num_languages = len(LanguagesEnum())
+
+language_tone_num_map = {
+    LanguagesEnum.ZH: num_zh_tones,
+    LanguagesEnum.ZH_MIX_EN: num_zh_tones,
+    LanguagesEnum.JP: num_ja_tones,
+    LanguagesEnum.EN: num_en_tones,
+    LanguagesEnum.KR: num_kr_tones,
+    LanguagesEnum.ES: num_es_tones,
+    LanguagesEnum.SP: num_es_tones,
+    LanguagesEnum.FR: num_fr_tones,
+    LanguagesEnum.DE: num_de_tones,
+    LanguagesEnum.RU: num_ru_tones,
+    LanguagesEnum.ZH_CA: num_cantonese_tones
+}
 
 language_tone_start_map = {
     LanguagesEnum.ZH: 0,
@@ -593,6 +612,9 @@ language_tone_start_map = {
     LanguagesEnum.ES: num_zh_tones + num_ja_tones + num_en_tones + num_kr_tones,
     LanguagesEnum.SP: num_zh_tones + num_ja_tones + num_en_tones + num_kr_tones,
     LanguagesEnum.FR: num_zh_tones + num_ja_tones + num_en_tones + num_kr_tones + num_es_tones,
+    LanguagesEnum.DE: num_zh_tones + num_ja_tones + num_en_tones + num_kr_tones + num_es_tones + num_fr_tones,
+    LanguagesEnum.RU: num_zh_tones + num_ja_tones + num_en_tones + num_kr_tones + num_es_tones + num_fr_tones + num_de_tones,
+    LanguagesEnum.ZH_CA: num_zh_tones + num_ja_tones + num_en_tones + num_kr_tones + num_es_tones + num_fr_tones + num_de_tones + num_ru_tones,
 }
 
 if __name__ == "__main__":

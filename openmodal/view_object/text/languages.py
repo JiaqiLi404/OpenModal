@@ -1,4 +1,7 @@
-class LanguagesEnum:
+from openmodal.view_object.BaseEnum import BaseEnum
+
+
+class LanguagesEnum(BaseEnum):
     ZH = "ZH"
     ZH_CA = "ZH_CANTONESE"
     JP = "JP"
@@ -9,3 +12,4 @@ class LanguagesEnum:
     SP = "SP"
     FR = "FR"
     RU = "RU"
+    DE= "DE"
