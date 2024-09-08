@@ -16,7 +16,10 @@ from transformers import AutoTokenizer
 
 current_file_path = os.path.dirname(__file__)
 CMU_DICT_PATH = os.path.join(current_file_path, "cmudict.rep")
-CACHE_PATH = os.path.join(current_file_path, "cmudict_cache.pickle")
+CMU_DICT_FAST_PATH = os.path.join(current_file_path, "cmudict-fast.rep")
+CACHE_PATH = os.path.join(current_file_path, "engdict_cache.pickle")
+CMU_DICT_HOT_PATH = os.path.join(current_file_path, "engdict-hot.rep")
+NAMECACHE_PATH = os.path.join(current_file_path, "namedict_cache.pickle")
 _g2p = G2p()
 word_tokenize = TweetTokenizer().tokenize
 
@@ -120,21 +123,29 @@ def post_replace_ph(ph):
 
 def read_dict():
     g2p_dict = {}
-    start_line = 49
     with open(CMU_DICT_PATH) as f:
         line = f.readline()
         line_index = 1
         while line:
-            if line_index >= start_line:
+            if line_index >= 57:
                 line = line.strip()
                 word_split = line.split("  ")
-                word = word_split[0]
+                word = word_split[0].lower()
+                g2p_dict[word] = [word_split[1].split(" ")]
 
-                syllable_split = word_split[1].split(" - ")
-                g2p_dict[word] = []
-                for syllable in syllable_split:
-                    phone_split = syllable.split(" ")
-                    g2p_dict[word].append(phone_split)
+            line_index = line_index + 1
+            line = f.readline()
+
+    with open(CMU_DICT_FAST_PATH) as f:
+        line = f.readline()
+        line_index = 1
+        while line:
+            if line_index >= 0:
+                line = line.strip()
+                word_split = line.split(" ")
+                word = word_split[0].lower()
+                if word not in g2p_dict:
+                    g2p_dict[word] = [word_split[1:]]
 
             line_index = line_index + 1
             line = f.readline()
@@ -154,6 +165,20 @@ def get_dict():
     else:
         g2p_dict = read_dict()
         cache_dict(g2p_dict, CACHE_PATH)
+
+    with open(CMU_DICT_HOT_PATH) as f:
+        line = f.readline()
+        line_index = 1
+        while line:
+            if line_index >= 0:
+                line = line.strip()
+                word_split = line.split(" ")
+                word = word_split[0].lower()
+                # 自定义发音词直接覆盖字典
+                g2p_dict[word] = [word_split[1:]]
+
+            line_index = line_index + 1
+            line = f.readline()
 
     return g2p_dict
 
@@ -188,7 +213,7 @@ def text_normalize(text):
     text = expand_abbreviations(text)
     return text
 
-NAMECACHE_PATH = os.path.join(current_file_path, "namedict_cache.pickle")
+
 def get_namedict():
     if os.path.exists(NAMECACHE_PATH):
         with open(NAMECACHE_PATH, "rb") as pickle_file:
@@ -307,63 +332,88 @@ class en_G2p(G2p):
         # 可以分词的递归处理
         return [phone for comp in comps for phone in self.qryword(comp)]
 
-def g2p(text,ckpt_bert_path='pretrained_bert-base-uncased', pad_start_end=True, tokenized=None):
-    if tokenized is None:
-        tokenizer = AutoTokenizer.from_pretrained(ckpt_bert_path)
-        tokenized = tokenizer.tokenize(text)
-    # import pdb; pdb.set_trace()
-    ph_groups = []
-    for t in tokenized:
-        if not t.startswith("#"):
-            ph_groups.append([t])
-        else:
-            ph_groups[-1].append(t.replace("#", ""))
-
-    phones = []
-    tones = []
-    word2ph = []
-    for group in ph_groups:
-        w = "".join(group)
-        phone_len = 0
-        word_len = len(group)
-        if w.upper() in eng_dict:
-            phns, tns = refine_syllables(eng_dict[w.upper()])
-            phones += phns
-            tones += tns
-            phone_len += len(phns)
-        else:
-            phone_list = list(filter(lambda p: p != " ", _g2p(w)))
-            for ph in phone_list:
-                if ph in arpa:
-                    ph, tn = refine_ph(ph)
-                    phones.append(ph)
-                    tones.append(tn)
-                else:
-                    phones.append(ph)
-                    tones.append(0)
-                phone_len += 1
-        aaa = distribute_phone(phone_len, word_len)
-        word2ph += aaa
-    phones = [post_replace_ph(i) for i in phones]
-
-    if pad_start_end:
-        phones = ["_"] + phones + ["_"]
-        tones = [0] + tones + [0]
-        word2ph = [1] + word2ph + [1]
-    return phones, tones, word2ph
-
-    # # g2p_en 整段推理，剔除不存在的arpa返回
-    # phone_list = en_G2p(text)
-    # phones = [ph if ph != "<unk>" else "UNK" for ph in phone_list if ph not in [" ", "<pad>", "UW", "</s>", "<s>"]]
-    # rep_map = {"'": "-"}
-    # phs_new = []
-    # for ph in phones:
-    #     if ph in symbols:
-    #         phs_new.append(ph)
-    #     elif ph in rep_map.keys():
-    #         phs_new.append(rep_map[ph])
+def g2p(text,ckpt_bert_path='pretrained_bert-base-uncased', pad_start_end=True, tokenized=None,with_tone=False):
+    # if tokenized is None:
+    #     tokenizer = AutoTokenizer.from_pretrained(ckpt_bert_path)
+    #     tokenized = tokenizer.tokenize(text)
+    # # import pdb; pdb.set_trace()
+    # ph_groups = []
+    # for t in tokenized:
+    #     if not t.startswith("#"):
+    #         ph_groups.append([t])
     #     else:
-    #         print("ph not in symbols: ", ph)
+    #         ph_groups[-1].append(t.replace("#", ""))
+    #
+    # phones = []
+    # tones = []
+    # word2ph = []
+    # for group in ph_groups:
+    #     w = "".join(group)
+    #     phone_len = 0
+    #     word_len = len(group)
+    #     if w.upper() in eng_dict:
+    #         phns, tns = refine_syllables(eng_dict[w.upper()])
+    #         phones += phns
+    #         tones += tns
+    #         phone_len += len(phns)
+    #     else:
+    #         phone_list = list(filter(lambda p: p != " ", _g2p(w)))
+    #         for ph in phone_list:
+    #             if ph in arpa:
+    #                 ph, tn = refine_ph(ph)
+    #                 phones.append(ph)
+    #                 tones.append(tn)
+    #             else:
+    #                 phones.append(ph)
+    #                 tones.append(0)
+    #             phone_len += 1
+    #     aaa = distribute_phone(phone_len, word_len)
+    #     word2ph += aaa
+    # phones = [post_replace_ph(i) for i in phones]
+    #
+    # if pad_start_end:
+    #     phones = ["_"] + phones + ["_"]
+    #     tones = [0] + tones + [0]
+    #     word2ph = [1] + word2ph + [1]
+    # return phones, tones, word2ph
+
+    # g2p_en 整段推理，剔除不存在的arpa返回
+    _g2p = en_G2p()
+    phone_list = _g2p(text)
+    phones = [ph if ph != "<unk>" else "UNK" for ph in phone_list if ph not in [" ", "<pad>", "UW", "</s>", "<s>"]]
+    rep_map = {"'": "-"}
+    phs_new = []
+    tones=[]
+    for ph in phones:
+        if ph in symbols:
+            if not with_tone:
+                ph=ph.lower()
+                tone=ph[-1]
+                if tone.isdigit():
+                    tones.append(int(tone))
+                    ph=ph[:-1]
+                else:
+                    tones.append(0)
+                phs_new.append(ph)
+            else:
+                phs_new.append(ph)
+        elif ph in rep_map.keys():
+            if not with_tone:
+                ph = ph.lower()
+                ph=rep_map[ph]
+                tone=ph[-1]
+                if tone.isdigit():
+                    tones.append(int(tone))
+                    ph=ph[:-1]
+                else:
+                    tones.append(0)
+                phs_new.append(ph)
+            else:
+                phs_new.append(rep_map[ph])
+        else:
+            print("ph not in symbols: ", ph)
+
+    return phs_new,tones,distribute_phone(len(phs_new), len(tokenized))
 
 
 if __name__ == "__main__":

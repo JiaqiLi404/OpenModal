@@ -9,7 +9,9 @@ from openmodal.component.audio.cnhubert import CNHubert
 from openmodal.engine import ModelBase
 from openmodal.model import BaseModel
 from openmodal.model.audio import GPTSoVITS_TTS
+from openmodal.model.text.pretrained_bert import get_bert
 from openmodal.process.audio import speech_embedding
+from openmodal.process.text.text_cleaner import clean_text, cleaned_text_to_sequence
 from openmodal.util.text import split_sentence
 
 
@@ -116,6 +118,7 @@ class SoVITSToneColorConverter(BaseModel):
                 text,
                 references_path,
                 reference_text,
+                reference_language,
                 speaker,
                 output_path=None,
                 tau=0.3,
@@ -126,9 +129,21 @@ class SoVITSToneColorConverter(BaseModel):
 
         # process the reference audio and text
         prompt = self.extract_se(references_path)
-        phones_ref, bert_ref, norm_text_ref = get_text_for_tts_infer(t, language, self.hps, self.ckpt_bert_path,
-                                                                            device,
-                                                                            self.symbol_to_id)
+
+        norm_text, phone, tone, word2ph = clean_text(text, self.language, self.ckpt_bert_path)
+        phone, tone, language = cleaned_text_to_sequence(phone, tone, self.language, self.symbol_to_id, with_tone=True)
+        bert = get_bert(norm_text, word2ph, self.language, self.ckpt_bert_path, self.device)
+        phone = torch.LongTensor(phone)
+        tone = torch.LongTensor(tone)
+        language = torch.LongTensor(language)
+
+        # process the input text
+        norm_text, phone, tone, word2ph = clean_text(text, self.language, self.ckpt_bert_path)
+        phone, tone, language = cleaned_text_to_sequence(phone, tone, self.language, self.symbol_to_id,with_tone=True)
+        bert = get_bert(norm_text, word2ph, self.language, self.ckpt_bert_path, self.device)
+        phone = torch.LongTensor(phone)
+        tone = torch.LongTensor(tone)
+        language = torch.LongTensor(language)
 
         texts = split_sentence(text, language=self.language)
         print(" > Text split to sentences.")

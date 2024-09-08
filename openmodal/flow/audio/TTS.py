@@ -28,7 +28,7 @@ class TTSFlow(BaseFlow):
 
     def run(self):
         texts = [
-            "使用无参考文本模式时建议使用微调的GPT，听不清参考音频说的啥(不晓得写啥)可以开。开启后无视填写的参考文本。"
+            "使用无参考文本模式时建议使用微调的GPT，听不清参考音频说的啥(不晓得写啥)可以开。开启后无视填写的参考文本。Hello every body!"
         ]
 
         outputs = []

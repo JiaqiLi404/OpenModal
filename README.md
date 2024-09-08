@@ -5,7 +5,10 @@
 
 ## Introduction
 
-OpenModal is a foundational library for training multi-modal models based on PyTorch. The highlights are:
+OpenModal is a foundational library for training multi-modal models based on PyTorch. 
+Our target is to provide a centered platform for multi-modal tasks and models, 
+to better standardize and fuse the models among different modal.
+The highlights are:
 
 - **Modular Design**: The library is designed in a modular way, which allows you to easily add and customize the
   components, just by registering them in the module registry.

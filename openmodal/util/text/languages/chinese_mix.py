@@ -142,7 +142,7 @@ def _g2p(segments,ckpt_bert_path='bert-base-multilingual-uncased'):
             if re.match('[a-zA-Z\s]+', text):
                 # english
                 tokenized_en = tokenizer.tokenize(text)
-                phones_en, tones_en, word2ph_en = g2p_en(text=None, pad_start_end=False, tokenized=tokenized_en)
+                phones_en, tones_en, word2ph_en = g2p_en(text=text, pad_start_end=False, tokenized=tokenized_en)
                 # apply offset to tones_en
                 tones_en = [t + language_tone_start_map['EN'] for t in tones_en]
                 phones_list += phones_en

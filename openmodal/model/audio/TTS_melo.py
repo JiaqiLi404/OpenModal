@@ -7,6 +7,7 @@ from tqdm import tqdm
 from openmodal.engine import ModelBase
 from openmodal.model import BaseModel
 from openmodal.component.audio.OpenVoiceSoVITS import OpenVoiceSoVITS
+from openmodal.model.text.pretrained_bert import get_bert
 from openmodal.process.text.text_cleaner import clean_text, cleaned_text_to_sequence
 from openmodal.util.text import split_sentence
 from openmodal.view_object.text.languages import LanguagesEnum
@@ -150,14 +151,12 @@ def get_text_for_tts_infer(text, language_str, hps, ckpt_bert_path, device, symb
         del word2ph
         assert bert.shape[-1] == len(phone), phone
 
-        if language_str == "ZH":
+        if language_str == LanguagesEnum.ZH:
             bert = bert
             ja_bert = torch.zeros(768, len(phone))
-        elif language_str in ["JP", "EN", "ZH_MIX_EN", 'KR', 'SP', 'ES', 'FR', 'DE', 'RU']:
+        else:
             ja_bert = bert
             bert = torch.zeros(1024, len(phone))
-        else:
-            raise NotImplementedError()
 
     assert bert.shape[-1] == len(
         phone
@@ -175,16 +174,3 @@ def intersperse(lst, item):
     return result
 
 
-def get_bert(norm_text, word2ph, language, ckpt_bert_path, device):
-    from openmodal.model.text.pretrained_bert.chinese_bert import get_bert_feature as zh_bert
-    from openmodal.model.text.pretrained_bert.english_bert import get_bert_feature as en_bert
-    from openmodal.model.text.pretrained_bert.japanese_bert import get_bert_feature as jp_bert
-    from openmodal.util.text.languages.chinese_mix import get_bert_feature as zh_mix_en_bert
-    from openmodal.model.text.pretrained_bert.spanish_bert import get_bert_feature as sp_bert
-    from openmodal.model.text.pretrained_bert.french_bert import get_bert_feature as fr_bert
-    from openmodal.util.text.languages.korean import get_bert_feature as kr_bert
-
-    lang_bert_func_map = {"ZH": zh_bert, "EN": en_bert, "JP": jp_bert, 'ZH_MIX_EN': zh_mix_en_bert,
-                          'FR': fr_bert, 'SP': sp_bert, 'ES': sp_bert, "KR": kr_bert}
-    bert = lang_bert_func_map[language](norm_text, word2ph, ckpt_bert_path, device)
-    return bert

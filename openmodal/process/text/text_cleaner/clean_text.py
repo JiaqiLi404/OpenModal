@@ -19,15 +19,17 @@ def clean_text(text, language, ckpt_bert_path):
 _symbol_to_id = {s: i for i, s in enumerate(symbols)}
 
 
-def cleaned_text_to_sequence(cleaned_text, tones, language, symbol_to_id=None):
+def cleaned_text_to_sequence(phones, tones, language, symbol_to_id=None,with_tone=False):
     """Converts a string of audio to a sequence of IDs corresponding to the symbols in the audio.
     Args:
       audio: string to convert to a sequence
     Returns:
       List of integers corresponding to the symbols in the audio
     """
+    if with_tone:
+        phones=[phones[i]+str(tones[i]) for i in range(len(phones))]
     symbol_to_id_map = symbol_to_id if symbol_to_id else _symbol_to_id
-    phones = [symbol_to_id_map[symbol] for symbol in cleaned_text]
+    phones = [symbol_to_id_map[symbol]if symbol in symbol_to_id_map else 'UNK' for symbol in phones]
     tone_start = language_tone_start_map[language]
     tones = [i + tone_start for i in tones]
     lang_id = language_id_map[language]
