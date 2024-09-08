@@ -4,6 +4,9 @@ from torch.nn.utils import remove_weight_norm
 
 from torch.nn.utils.parametrizations import weight_norm
 
+from openmodal.util.torch import fused_add_tanh_sigmoid_multiply
+
+
 class WaveNet(torch.nn.Module):
     def __init__(
         self,
@@ -91,11 +94,3 @@ class WaveNet(torch.nn.Module):
         for l in self.res_skip_layers:
             remove_weight_norm(l)
 
-@torch.jit.script
-def fused_add_tanh_sigmoid_multiply(input_a, input_b, n_channels):
-    n_channels_int = n_channels[0]
-    in_act = input_a + input_b
-    t_act = torch.tanh(in_act[:, :n_channels_int, :])
-    s_act = torch.sigmoid(in_act[:, n_channels_int:, :])
-    acts = t_act * s_act
-    return acts

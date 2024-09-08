@@ -2,6 +2,7 @@ import torch.nn as nn
 import torch
 
 from openmodal.block.audio.wave_net import WaveNet
+from openmodal.util.torch import sequence_mask
 
 
 class PosteriorEncoder(nn.Module):
@@ -35,6 +36,8 @@ class PosteriorEncoder(nn.Module):
         self.proj = nn.Conv1d(hidden_channels, out_channels * 2, 1)
 
     def forward(self, x, x_lengths, g=None, tau=1.0):
+        if g != None:
+            g = g.detach()
         x_mask = torch.unsqueeze(sequence_mask(x_lengths, x.size(2)), 1).to(
             x.dtype
         )
@@ -45,8 +48,3 @@ class PosteriorEncoder(nn.Module):
         z = (m + torch.randn_like(m) * tau * torch.exp(logs)) * x_mask
         return z, m, logs, x_mask
 
-def sequence_mask(length, max_length=None):
-    if max_length is None:
-        max_length = length.max()
-    x = torch.arange(max_length, dtype=length.dtype, device=length.device)
-    return x.unsqueeze(0) < length.unsqueeze(1)

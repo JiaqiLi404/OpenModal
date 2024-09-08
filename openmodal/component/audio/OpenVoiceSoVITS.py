@@ -13,6 +13,8 @@ from openmodal.block.coupling_block import TransformerCouplingBlock, ResidualCou
 from openmodal.engine import ModelBase
 from openmodal.block.audio.posterior_encoder import PosteriorEncoder
 from openmodal.block.audio.reference_encoder import ReferenceEncoder
+from openmodal.util.torch import sequence_mask, rand_slice_segments
+
 
 @ModelBase.register_module(name="OpenVoiceSoVITS")
 class OpenVoiceSoVITS(nn.Module):
@@ -347,6 +349,7 @@ class SoVITSEncoder(nn.Module):
             n_layers,
             kernel_size,
             p_dropout,
+            flow_version="linear",
             gin_channels=self.gin_channels,
         )
         self.proj = nn.Conv1d(hidden_channels, out_channels * 2, 1)
@@ -376,30 +379,6 @@ class SoVITSEncoder(nn.Module):
 
 
 
-def rand_slice_segments(x, x_lengths=None, segment_size=4):
-    b, d, t = x.size()
-    if x_lengths is None:
-        x_lengths = t
-    ids_str_max = x_lengths - segment_size + 1
-    ids_str = (torch.rand([b]).to(device=x.device) * ids_str_max).to(dtype=torch.long)
-    ret = slice_segments(x, ids_str, segment_size)
-    return ret, ids_str
-
-
-def slice_segments(x, ids_str, segment_size=4):
-    ret = torch.zeros_like(x[:, :, :segment_size])
-    for i in range(x.size(0)):
-        idx_str = ids_str[i]
-        idx_end = idx_str + segment_size
-        ret[i] = x[i, :, idx_str:idx_end]
-    return ret
-
-
-def sequence_mask(length, max_length=None):
-    if max_length is None:
-        max_length = length.max()
-    x = torch.arange(max_length, dtype=length.dtype, device=length.device)
-    return x.unsqueeze(0) < length.unsqueeze(1)
 
 @numba.jit(
     numba.void(

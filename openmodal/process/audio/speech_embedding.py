@@ -1,7 +1,6 @@
 import os
 import glob
 from glob import glob
-from glob import glob
 import numpy as np
 from pydub import AudioSegment
 from faster_whisper import WhisperModel
@@ -11,14 +10,14 @@ import librosa
 from whisper_timestamped.transcribe import get_audio_tensor, get_vad_segments
 
 model=None
-def split_audio_whisper(whisper_model,audio_path, audio_name, target_dir='processed',device='cuda'):
+def split_audio_whisper(whisper_model,audio_path, audio_name, target_path='processed',device='cuda'):
     global model
     if model is None:
         model = WhisperModel(whisper_model, device=device, compute_type="float16")
     audio = AudioSegment.from_file(audio_path)
     max_len = len(audio)
 
-    target_folder = os.path.join(target_dir, audio_name)
+    target_folder = os.path.join(target_path, audio_name)
 
     segments, info = model.transcribe(audio_path, beam_size=5, word_timestamps=True)
     segments = list(segments)
@@ -69,7 +68,7 @@ def split_audio_whisper(whisper_model,audio_path, audio_name, target_dir='proces
     return wavs_folder
 
 
-def split_audio_vad(audio_path, audio_name, target_dir, split_seconds=10.0):
+def split_audio_vad(audio_path, audio_name, target_path, split_seconds=10.0):
     SAMPLE_RATE = 16000
     audio_vad = get_audio_tensor(audio_path)
     segments = get_vad_segments(
@@ -90,7 +89,7 @@ def split_audio_vad(audio_path, audio_name, target_dir, split_seconds=10.0):
 
     audio_dur = audio_active.duration_seconds
     print(f'after vad: dur = {audio_dur}')
-    target_folder = os.path.join(target_dir, audio_name)
+    target_folder = os.path.join(target_path, audio_name)
     wavs_folder = os.path.join(target_folder, 'wavs')
     os.makedirs(wavs_folder, exist_ok=True)
     start_time = 0.
@@ -123,11 +122,9 @@ def hash_numpy_array(audio_path):
     return base64_value.decode('utf-8')[:16].replace('/', '_^')
 
 
-def get_se(audio_path, vc_model, target_dir='processed', whisper_model=None):
-    device = vc_model.device
-
+def get_se(audio_path, vc_model, target_path='temp/processed', whisper_model=None):
     audio_name = f"{os.path.basename(audio_path).rsplit('.', 1)[0]}_{hash_numpy_array(audio_path)}"
-    se_path = os.path.join(target_dir, audio_name, 'se.pth')
+    se_path = os.path.join(target_path, audio_name, 'se.pth')
 
     # if os.path.isfile(se_path):
     #     se = torch.load(se_path).to(device)
@@ -136,9 +133,9 @@ def get_se(audio_path, vc_model, target_dir='processed', whisper_model=None):
     #     wavs_folder = audio_path
 
     if whisper_model is None:
-        wavs_folder = split_audio_vad(audio_path, target_dir=target_dir, audio_name=audio_name)
+        wavs_folder = split_audio_vad(audio_path, target_path=target_path, audio_name=audio_name)
     else:
-        wavs_folder = split_audio_whisper(whisper_model,audio_path, target_dir=target_dir, audio_name=audio_name,device="cuda")
+        wavs_folder = split_audio_whisper(whisper_model,audio_path, target_path=target_path, audio_name=audio_name,device="cuda")
 
     audio_segs = glob(f'{wavs_folder}/*.wav')
     if len(audio_segs) == 0:

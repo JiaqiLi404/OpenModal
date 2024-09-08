@@ -17,11 +17,11 @@ PP_FIX_DICT_PATH = os.path.join(current_file_path, "polyphonic-fix.rep")
 
 
 class G2PWPinyin(Pinyin):
-    def __init__(self, model_dir='G2PWModel/', model_source=None,
+    def __init__(self, model_path='G2PWModel/', model_source=None,
                  enable_non_tradional_chinese=True,
                  v_to_u=False, neutral_tone_with_five=False, tone_sandhi=False, **kwargs):
         self._g2pw = G2PWOnnxConverter(
-            model_dir=model_dir,
+            model_path=model_path,
             style='pinyin',
             model_source=model_source,
             enable_non_tradional_chinese=enable_non_tradional_chinese,

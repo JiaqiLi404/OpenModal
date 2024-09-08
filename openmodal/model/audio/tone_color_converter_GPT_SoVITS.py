@@ -4,92 +4,118 @@ import soundfile
 import os
 import librosa
 
+from openmodal.component.audio.GPTSoVITS import GPTSoVITS
+from openmodal.component.audio.cnhubert import CNHubert
 from openmodal.engine import ModelBase
-from openmodal.component.audio.OpenVoiceSoVITS import OpenVoiceSoVITS
 from openmodal.model import BaseModel
+from openmodal.model.audio import GPTSoVITS_TTS
 from openmodal.process.audio import speech_embedding
+from openmodal.util.text import split_sentence
 
 
-@ModelBase.register_module(name="OpenVoiceToneColorConverter")
-class OpenVoiceToneColorConverter(BaseModel):
+@ModelBase.register_module(name="SoVITSToneColorConverter")
+class SoVITSToneColorConverter(BaseModel):
     def __init__(self,
-                 ckpt_converter_path,
-                 ckpt_whisper_path,
+                 language,
+                 ckpt_path=None,
+                 ckpt_bert_path=None,
+                 ckpt_hubert_path=None,
+                 ckpt_whisper_path=None,
                  water_mark=None,
-                 is_train=True,
+                 is_train=False,
                  *args,
-                 **kwargs):
+                 **kwargs
+                 ):
         super().__init__(*args, **kwargs)
 
-        self.ckpt_converter_path = ckpt_converter_path
+        self.ckpt_path = ckpt_path
+        self.ckpt_bert_path = ckpt_bert_path
+        self.ckpt_hubert_path = ckpt_hubert_path
         self.ckpt_whisper_path = ckpt_whisper_path
-        config_path = os.path.join(ckpt_converter_path, "converter", "config.json")
-        hps = self.get_hparams_from_file(config_path)
+        self.language = language
+        self.is_train = is_train
 
-        model = OpenVoiceSoVITS(
-            len(getattr(hps, 'symbols', [])),
-            hps.data.filter_length // 2 + 1,
-            segment_size=None,
-            n_speakers=hps.data.n_speakers,
-            num_tones=None,
-            num_languages=None,
-            use_transformer_flow=False,
-            **hps.model,
-        ).to(self.device)
-
-
-        self.model = model
+        # load state_dict
+        checkpoint_dict, hps = self.load_or_download_model(
+            f"{ckpt_path}/s2G2333k.pth", self.device)
         self.hps = hps
+
+        self.tts_model = GPTSoVITS_TTS(
+            language=language,
+            ckpt_path=ckpt_path,
+            ckpt_bert_path=ckpt_bert_path,
+            is_train=is_train,
+            is_half=self.is_half
+        )
+        self.ssl_model = CNHubert(base_path=ckpt_hubert_path)
+        self.vq_model = GPTSoVITS(
+            hps.data.filter_length // 2 + 1,
+            hps.train.segment_size // hps.data.hop_length,
+            n_speakers=hps.data.n_speakers,
+            **hps.model
+        )
+
         self.watermark = water_mark
-        self.load_ckpt(f'{ckpt_converter_path}/converter/checkpoint.pth')
 
         if water_mark is not None:
             import wavmark
-            self.watermark_model = wavmark.load_model().to(self.device)
+            self.watermark_model = wavmark.load_model()
         else:
             self.watermark_model = None
 
         if is_train:
-            self.model.train()
+            self.train()
         else:
-            self.model.eval()
+            self.eval()
+        self.to(self.device) if self.device else None
 
-    def load_ckpt(self, ckpt_path):
-        checkpoint_dict = torch.load(ckpt_path, map_location=torch.device(self.device))
-        a, b = self.model.load_state_dict(checkpoint_dict['model'], strict=False)
-        print("Loaded checkpoint '{}'".format(ckpt_path))
-        print('missing/unexpected keys:', a, b)
+    def extract_se(self, ref_wav_path, sr=16000, min_sec=3, max_sec=30, se_save_path=None):
+        if isinstance(ref_wav_path, str):
+            ref_wav_list = [ref_wav_path]
 
-    def extract_se(self, ref_wav_list, se_save_path=None):
-        if isinstance(ref_wav_list, str):
-            ref_wav_list = [ref_wav_list]
-
-        device = self.device
-        hps = self.hps
         gs = []
-
         for fname in ref_wav_list:
-            audio_ref, sr = librosa.load(fname, sr=hps.data.sampling_rate)
-            y = torch.FloatTensor(audio_ref)
-            y = y.to(device)
-            y = y.unsqueeze(0)
-            y = spectrogram_torch(y, hps.data.filter_length,
-                                  hps.data.sampling_rate, hps.data.hop_length, hps.data.win_length,
-                                  center=False).to(device)
-            with torch.no_grad():
-                g = self.model.ref_enc(y.transpose(1, 2)).unsqueeze(-1)
-                gs.append(g.detach())
+            with torch.no_grad() if not self.is_train else torch.enable_grad():
+                # load reference wav
+                ref_wav, sr = librosa.load(fname, sr=sr)
+                if (ref_wav.shape[0] > max_sec * sr or ref_wav.shape[0] < min_sec * sr):
+                    raise ValueError(f"Reference wav length should be between {min_sec} and {max_sec} seconds.")
+                ref_wav = torch.from_numpy(ref_wav)
+                # add zero wave
+                zero_wav = np.zeros(
+                    int(self.hps.data.sampling_rate * 0.3),
+                    dtype=np.float16 if self.is_half else np.float32,
+                )
+                zero_wav_torch = torch.from_numpy(zero_wav)
+                if self.is_half:
+                    ref_wav = ref_wav.half()
+                    zero_wav_torch = zero_wav_torch.half()
+                ref_wav = ref_wav.to(self.device)
+                zero_wav_torch = zero_wav_torch.to(self.device)
+                ref_wav = torch.cat([ref_wav, zero_wav_torch])
+                ssl_content = self.ssl_model.model(ref_wav.unsqueeze(0))[
+                    "last_hidden_state"
+                ].transpose(
+                    1, 2
+                )  # .float()
+                codes = self.vq_model.extract_latent(ssl_content)
+                prompt_semantic = codes[0, 0]
+                prompt = prompt_semantic.unsqueeze(0)
+                gs.append(prompt.detach())
+
         gs = torch.stack(gs).mean(0)
 
         if se_save_path is not None:
             os.makedirs(os.path.dirname(se_save_path), exist_ok=True)
             torch.save(gs.cpu(), se_save_path)
 
+        gs = gs.to(self.device)
         return gs
 
     def forward(self,
-                audio,
+                text,
                 references_path,
+                reference_text,
                 speaker,
                 output_path=None,
                 tau=0.3,
@@ -97,11 +123,17 @@ class OpenVoiceToneColorConverter(BaseModel):
                 *args,
                 **kwargs):
         hps = self.hps
-        target_se, audio_name = speech_embedding.get_se(references_path, self, whisper_model=self.ckpt_whisper_path)
-        # load audio
-        if source_sr is not None:
-            audio = librosa.resample(audio, source_sr, hps.data.sampling_rate, fix=True, scale=False)
-        audio = torch.from_numpy(audio).float()
+
+        # process the reference audio and text
+        prompt = self.extract_se(references_path)
+        phones_ref, bert_ref, norm_text_ref = get_text_for_tts_infer(t, language, self.hps, self.ckpt_bert_path,
+                                                                            device,
+                                                                            self.symbol_to_id)
+
+        texts = split_sentence(text, language=self.language)
+        print(" > Text split to sentences.")
+        print('\n'.join(texts))
+        print(" > ===========================")
 
         with torch.no_grad():
             y = torch.FloatTensor(audio).to(self.device)
@@ -111,7 +143,8 @@ class OpenVoiceToneColorConverter(BaseModel):
                                      center=False).to(self.device)
             spec_lengths = torch.LongTensor([spec.size(-1)]).to(self.device)
             speaker_key = speaker.lower().replace('_', '-')
-            src_se = torch.load(f"{self.ckpt_converter_path}/base_speakers/ses/{speaker_key}.pth", map_location=self.device)
+            src_se = torch.load(f"{self.ckpt_converter_path}/base_speakers/ses/{speaker_key}.pth",
+                                map_location=self.device)
             audio = self.model.voice_conversion(spec, spec_lengths, sid_src=src_se, sid_tgt=target_se, tau=tau)[0][
                 0, 0].data.cpu().float().numpy()
             if self.watermark is not None:

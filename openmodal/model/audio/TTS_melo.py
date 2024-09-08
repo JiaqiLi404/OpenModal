@@ -6,7 +6,7 @@ from tqdm import tqdm
 
 from openmodal.engine import ModelBase
 from openmodal.model import BaseModel
-from openmodal.component.audio.SoVITS import OpenVoiceSoVITS
+from openmodal.component.audio.OpenVoiceSoVITS import OpenVoiceSoVITS
 from openmodal.process.text.text_cleaner import clean_text, cleaned_text_to_sequence
 from openmodal.util.text import split_sentence
 from openmodal.view_object.text.languages import LanguagesEnum
@@ -16,14 +16,14 @@ from openmodal.util.text.languages.symbols import symbols as openmodal_symbols, 
 @ModelBase.register_module(name="MeloTTS")
 class MeloTTS(BaseModel):
     """
-    The MeloTTS model is open-sourced by the OpenVoice team.
+    The MeloTTS Text2Speech is open-sourced by the OpenVoice team.
     https://github.com/myshell-ai/OpenVoice
     """
 
     def __init__(self,
                  language,
                  ckpt_path=None,
-                 ckpt_bert_dir=None,
+                 ckpt_bert_path=None,
                  water_mark=None,
                  is_train=False,
                  *args,
@@ -48,7 +48,7 @@ class MeloTTS(BaseModel):
             num_tones=num_tones,
             num_languages=num_languages,
             **hps.model,
-        ).to(self.device)
+        )
         self.model = model
         self.symbol_to_id = {s: i for i, s in enumerate(symbols)}
         self.hps = hps
@@ -58,11 +58,13 @@ class MeloTTS(BaseModel):
         else:
             model.eval()
             # load state_dict
-            self.model.load_state_dict(checkpoint_dict, strict=True)
+            self.model.load_state_dict(checkpoint_dict, strict=False)
 
         language = language.split('_')[0]
         self.language = 'ZH_MIX_EN' if language == 'ZH' else language  # we support a ZH_MIX_EN model
-        self.ckpt_bert_dir = ckpt_bert_dir
+        self.ckpt_bert_path = ckpt_bert_path
+
+        self.to(self.device) if self.device else None
 
     @staticmethod
     def audio_numpy_concat(segment_data_list, sr, speed=1.):
@@ -88,7 +90,7 @@ class MeloTTS(BaseModel):
                 # split the audio by capital letters
                 t = re.sub(r'([a-z])([A-Z])', r'\1 \2', t)
             device = self.device
-            bert, ja_bert, phones, tones, lang_ids = get_text_for_tts_infer(t, language, self.hps, self.ckpt_bert_dir,
+            bert, ja_bert, phones, tones, lang_ids = get_text_for_tts_infer(t, language, self.hps, self.ckpt_bert_path,
                                                                             device,
                                                                             self.symbol_to_id)
             with torch.no_grad():
@@ -127,8 +129,8 @@ class MeloTTS(BaseModel):
         return audio
 
 
-def get_text_for_tts_infer(text, language_str, hps, ckpt_bert_dir, device, symbol_to_id=None):
-    norm_text, phone, tone, word2ph = clean_text(text, language_str, ckpt_bert_dir)
+def get_text_for_tts_infer(text, language_str, hps, ckpt_bert_path, device, symbol_to_id=None):
+    norm_text, phone, tone, word2ph = clean_text(text, language_str, ckpt_bert_path)
     phone, tone, language = cleaned_text_to_sequence(phone, tone, language_str, symbol_to_id)
 
     if hps.data.add_blank:
@@ -144,7 +146,7 @@ def get_text_for_tts_infer(text, language_str, hps, ckpt_bert_dir, device, symbo
         bert = torch.zeros(1024, len(phone))
         ja_bert = torch.zeros(768, len(phone))
     else:
-        bert = get_bert(norm_text, word2ph, language_str, ckpt_bert_dir, device)
+        bert = get_bert(norm_text, word2ph, language_str, ckpt_bert_path, device)
         del word2ph
         assert bert.shape[-1] == len(phone), phone
 
@@ -173,7 +175,7 @@ def intersperse(lst, item):
     return result
 
 
-def get_bert(norm_text, word2ph, language, ckpt_bert_dir, device):
+def get_bert(norm_text, word2ph, language, ckpt_bert_path, device):
     from openmodal.model.text.pretrained_bert.chinese_bert import get_bert_feature as zh_bert
     from openmodal.model.text.pretrained_bert.english_bert import get_bert_feature as en_bert
     from openmodal.model.text.pretrained_bert.japanese_bert import get_bert_feature as jp_bert
@@ -184,5 +186,5 @@ def get_bert(norm_text, word2ph, language, ckpt_bert_dir, device):
 
     lang_bert_func_map = {"ZH": zh_bert, "EN": en_bert, "JP": jp_bert, 'ZH_MIX_EN': zh_mix_en_bert,
                           'FR': fr_bert, 'SP': sp_bert, 'ES': sp_bert, "KR": kr_bert}
-    bert = lang_bert_func_map[language](norm_text, word2ph, ckpt_bert_dir, device)
+    bert = lang_bert_func_map[language](norm_text, word2ph, ckpt_bert_path, device)
     return bert

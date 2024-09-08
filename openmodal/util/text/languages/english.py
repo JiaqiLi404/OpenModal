@@ -307,9 +307,9 @@ class en_G2p(G2p):
         # 可以分词的递归处理
         return [phone for comp in comps for phone in self.qryword(comp)]
 
-def g2p(text,ckpt_bert_dir='pretrained_bert-base-uncased', pad_start_end=True, tokenized=None):
+def g2p(text,ckpt_bert_path='pretrained_bert-base-uncased', pad_start_end=True, tokenized=None):
     if tokenized is None:
-        tokenizer = AutoTokenizer.from_pretrained(ckpt_bert_dir)
+        tokenizer = AutoTokenizer.from_pretrained(ckpt_bert_path)
         tokenized = tokenizer.tokenize(text)
     # import pdb; pdb.set_trace()
     ph_groups = []

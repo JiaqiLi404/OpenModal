@@ -51,6 +51,8 @@ python openmodal/run.py --config config/xxx.yaml
 
 The configuration files are stored in the `configs` directory, which support yaml and json formats.
 
+#### Type
+
 In a config, we support you to define the variables and the modules.
 When defining the models, you could use the `type` key to specify the model type, which should be registered in the
 module registry.
@@ -63,6 +65,8 @@ model:
   num_classes: "{{num_classes}}"
   depth: 18
 ```
+
+#### Variables
 
 When you are using the variables, you must use the `{{variable_name}}` format,
 and confirm that the variable is defined in the config before using it.
@@ -81,6 +85,8 @@ model:
   depth: 18
 ```
 
+#### Basic Config
+
 The usage of configuration is similar to and partially copied from
 the [mmengine](https://github.com/open-mmlab/mmengine/tree/main).
 Thus, you could structure your configurations by providing `_base_`, to inherit the base configuration; and providing
@@ -97,6 +103,12 @@ model:
   depth: 18
 ```
 
+OpenModal will first find the config file in the same folder as the current config,
+then find the config file based on the project root,
+and finally find the config file regarding _base_ as a whole path.
+
+#### External Objects
+
 When you need to import outer libraries or non-registered libraries, you should use the `{library}` format, e.g.:
 
 ```yaml
@@ -105,6 +117,8 @@ model:
   num_classes: "{openmodal.view_object.ResNetEnum.num_classes}"
   depth: 18
 ```
+
+#### Flow
 
 A flow is necessary for the project, which defines the flow of the project, including data loading, preprocessing,
 augmentation, inferencing, etc.

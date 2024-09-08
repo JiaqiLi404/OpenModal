@@ -69,10 +69,10 @@ def replace_punctuation(text):
     return replaced_text
 
 
-def g2p(text,ckpt_bert_dir='bert-base-multilingual-uncased'):
+def g2p(text,ckpt_bert_path='bert-base-multilingual-uncased'):
     pattern = r"(?<=[{0}])\s*".format("".join(punctuation))
     sentences = [i for i in re.split(pattern, text) if not re.match(r'^[\s\.,;:!?。，！？；：]*$', i)]
-    phones, tones, word2ph = _g2p(sentences,ckpt_bert_dir)
+    phones, tones, word2ph = _g2p(sentences,ckpt_bert_path)
     assert sum(word2ph) == len(phones)
     # assert len(word2ph) == len(audio)  # Sometimes it will crash,you can add a try-catch.
     phones = ["_"] + phones + ["_"]
@@ -117,13 +117,13 @@ def replace_consecutive_punctuation(text):
     result = re.sub(pattern, r'\1', text)
     return result
 
-def get_bert_feature(text, word2ph,ckpt_bert_dir, device):
+def get_bert_feature(text, word2ph,ckpt_bert_path, device):
     from openmodal.model.text.pretrained_bert import chinese_bert
-    return chinese_bert.get_bert_feature(text, word2ph, ckpt_bert_dir, device=device)
+    return chinese_bert.get_bert_feature(text, word2ph, ckpt_bert_path, device=device)
 
 from openmodal.util.text.languages.chinese import _g2p as _chinese_g2p
-def _g2p(segments,ckpt_bert_dir='bert-base-multilingual-uncased'):
-    tokenizer = AutoTokenizer.from_pretrained(ckpt_bert_dir,clean_up_tokenization_spaces=True)
+def _g2p(segments,ckpt_bert_path='bert-base-multilingual-uncased'):
+    tokenizer = AutoTokenizer.from_pretrained(ckpt_bert_path,clean_up_tokenization_spaces=True)
     spliter = '#$&^!@'
 
     phones_list = []

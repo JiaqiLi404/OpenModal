@@ -39,7 +39,7 @@ class TransformerCouplingBlock(nn.Module):
                 n_layers,
                 kernel_size,
                 p_dropout,
-                isflow=True,
+                isflow=False,
                 gin_channels=self.gin_channels,
             )
             if share_parameter
@@ -106,7 +106,7 @@ class TransformerCouplingLayer(nn.Module):
                 n_layers,
                 kernel_size,
                 p_dropout,
-                isflow=True,
+                flow_version=None,
                 gin_channels=gin_channels,
             )
             if wn_sharing_parameter is None

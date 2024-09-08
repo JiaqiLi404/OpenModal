@@ -3,8 +3,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 import math
 
-from openmodal.block.conv import DDSConv, LayerNorm
+from openmodal.block.conv import DDSConv
 from openmodal.block.coupling_block import piecewise_rational_quadratic_transform, Flip
+from openmodal.block.normalizations import LayerNorm
+
 
 class DurationPredictor(nn.Module):
     def __init__(

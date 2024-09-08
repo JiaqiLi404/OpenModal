@@ -54,39 +54,39 @@ def predict(session, onnx_input: Dict[str, Any],
     return all_preds, all_confidences
 
 
-def download_and_decompress(model_dir: str = 'G2PWModel/'):
-    if not os.path.exists(model_dir):
-        parent_directory = os.path.dirname(model_dir)
-        if not os.path.exists(parent_directory):
-            os.makedirs(parent_directory, exist_ok=True)
-        zip_dir = os.path.join(parent_directory, "G2PWModel_1.1.zip")
-        extract_dir = os.path.join(parent_directory, "G2PWModel_1.1")
-        extract_dir_new = os.path.join(parent_directory, "G2PWModel")
+def download_and_decompress(model_path: str = 'G2PWModel/'):
+    if not os.path.exists(model_path):
+        parent_pathectory = os.path.dirname(model_path)
+        if not os.path.exists(parent_pathectory):
+            os.makedirs(parent_pathectory, exist_ok=True)
+        zip_path = os.path.join(parent_pathectory, "G2PWModel_1.1.zip")
+        extract_path = os.path.join(parent_pathectory, "G2PWModel_1.1")
+        extract_path_new = os.path.join(parent_pathectory, "G2PWModel")
         print("Downloading g2pw model...")
         modelscope_url = "https://paddlespeech.bj.bcebos.com/Parakeet/released_models/g2p/G2PWModel_1.1.zip"
         with requests.get(modelscope_url, stream=True) as r:
             r.raise_for_status()
-            with open(zip_dir, 'wb') as f:
+            with open(zip_path, 'wb') as f:
                 for chunk in r.iter_content(chunk_size=8192):
                     if chunk:
                         f.write(chunk)
 
         print("Extracting g2pw model...")
-        with zipfile.ZipFile(zip_dir, "r") as zip_ref:
-            zip_ref.extractall(parent_directory)
+        with zipfile.ZipFile(zip_path, "r") as zip_ref:
+            zip_ref.extractall(parent_pathectory)
 
-        os.rename(extract_dir, extract_dir_new)
+        os.rename(extract_path, extract_path_new)
 
-    return model_dir
+    return model_path
 
 
 class G2PWOnnxConverter:
     def __init__(self,
-                 model_dir: str = 'G2PWModel/',
+                 model_path: str = 'G2PWModel/',
                  style: str = 'bopomofo',
                  model_source: str = None,
                  enable_non_tradional_chinese: bool = False):
-        uncompress_path = download_and_decompress(model_dir)
+        uncompress_path = download_and_decompress(model_path)
         uncompress_path = os.path.join(uncompress_path, "G2PWModel")
 
         sess_options = onnxruntime.SessionOptions()

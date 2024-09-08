@@ -568,8 +568,8 @@ def distribute_phone(n_phone, n_word):
 # tokenizer = AutoTokenizer.from_pretrained('cl-tohoku/pretrained_bert-base-japanese-v3')
 
 
-def g2p(norm_text,ckpt_bert_dir='tohoku-nlp/bert-base-japanese-v3'):
-    tokenizer = AutoTokenizer.from_pretrained(ckpt_bert_dir)
+def g2p(norm_text,ckpt_bert_path='tohoku-nlp/bert-base-japanese-v3'):
+    tokenizer = AutoTokenizer.from_pretrained(ckpt_bert_path)
     tokenized = tokenizer.tokenize(norm_text)
     phs = []
     ph_groups = []

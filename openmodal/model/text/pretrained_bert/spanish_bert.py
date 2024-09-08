@@ -5,10 +5,10 @@ import sys
 tokenizer = None
 model = None
 
-def get_bert_feature(text, word2ph, ckpt_bert_dir= 'dccuchile/bert-base-spanish-wwm-uncased', device=None):
+def get_bert_feature(text, word2ph, ckpt_bert_path= 'dccuchile/bert-base-spanish-wwm-uncased', device=None):
     global model, tokenizer
     if tokenizer is None:
-        tokenizer = AutoTokenizer.from_pretrained(ckpt_bert_dir,clean_up_tokenization_spaces=True)
+        tokenizer = AutoTokenizer.from_pretrained(ckpt_bert_path,clean_up_tokenization_spaces=True)
     if (
         sys.platform == "darwin"
         and torch.backends.mps.is_available()
@@ -18,7 +18,7 @@ def get_bert_feature(text, word2ph, ckpt_bert_dir= 'dccuchile/bert-base-spanish-
     if not device:
         device = "cuda"
     if model is None:
-        model = AutoModelForMaskedLM.from_pretrained(ckpt_bert_dir).to(
+        model = AutoModelForMaskedLM.from_pretrained(ckpt_bert_path).to(
             device
         )
     with torch.no_grad():

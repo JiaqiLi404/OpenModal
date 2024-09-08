@@ -1,7 +1,8 @@
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+
+from openmodal.block.normalizations import LayerNorm
 
 
 class DDSConv(nn.Module):
@@ -22,7 +23,7 @@ class DDSConv(nn.Module):
         self.norms_1 = nn.ModuleList()
         self.norms_2 = nn.ModuleList()
         for i in range(n_layers):
-            dilation = kernel_size**i
+            dilation = kernel_size ** i
             padding = (kernel_size * dilation - dilation) // 2
             self.convs_sep.append(
                 nn.Conv1d(
@@ -52,16 +53,59 @@ class DDSConv(nn.Module):
             x = x + y
         return x * x_mask
 
-class LayerNorm(nn.Module):
-    def __init__(self, channels, eps=1e-5):
-        super().__init__()
-        self.channels = channels
-        self.eps = eps
 
-        self.gamma = nn.Parameter(torch.ones(channels))
-        self.beta = nn.Parameter(torch.zeros(channels))
+class ConvNorm(nn.Module):
+    def __init__(
+            self,
+            in_channels,
+            out_channels,
+            kernel_size=1,
+            stride=1,
+            padding=None,
+            dilation=1,
+            bias=True,
+            spectral_norm=False,
+    ):
+        super(ConvNorm, self).__init__()
+
+        if padding is None:
+            assert kernel_size % 2 == 1
+            padding = int(dilation * (kernel_size - 1) / 2)
+
+        self.conv = torch.nn.Conv1d(
+            in_channels,
+            out_channels,
+            kernel_size=kernel_size,
+            stride=stride,
+            padding=padding,
+            dilation=dilation,
+            bias=bias,
+        )
+
+        if spectral_norm:
+            self.conv = nn.utils.spectral_norm(self.conv)
+
+    def forward(self, input):
+        out = self.conv(input)
+        return out
+
+
+class Conv1dGLU(nn.Module):
+    """
+    Conv1d + GLU(Gated Linear Unit) with residual connection.
+    For GLU refer to https://arxiv.org/abs/1612.08083 paper.
+    """
+
+    def __init__(self, in_channels, out_channels, kernel_size, dropout):
+        super(Conv1dGLU, self).__init__()
+        self.out_channels = out_channels
+        self.conv1 = ConvNorm(in_channels, 2 * out_channels, kernel_size=kernel_size)
+        self.dropout = nn.Dropout(dropout)
 
     def forward(self, x):
-        x = x.transpose(1, -1)
-        x = F.layer_norm(x, (self.channels,), self.gamma, self.beta, self.eps)
-        return x.transpose(1, -1)
+        residual = x
+        x = self.conv1(x)
+        x1, x2 = torch.split(x, split_size_or_sections=self.out_channels, dim=1)
+        x = x1 * torch.sigmoid(x2)
+        x = residual + self.dropout(x)
+        return x

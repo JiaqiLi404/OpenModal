@@ -7,7 +7,7 @@ from openmodal.engine import ModelBase
 
 @ModelBase.register_module(name="BaseModel")
 class BaseModel(torch.nn.Module):
-    def __init__(self, num=None, device='auto', *args, **kwargs):
+    def __init__(self, num=None, device='auto',is_half=None, *args, **kwargs):
         super().__init__()
         self._num = num
 
@@ -20,6 +20,11 @@ class BaseModel(torch.nn.Module):
         # AttributeError: property 'device' of object has no setter
         if device is not None:
             self.device = device
+
+        if is_half:
+            self.half()
+        self.is_half=is_half
+
 
     def forward(self, input_data: int) -> any:
         return self._num + input_data
@@ -38,7 +43,10 @@ class BaseModel(torch.nn.Module):
         if not os.path.exists(ckpt_path):
             download_model, download_config = True, True
         else:
-            files = os.listdir(ckpt_path)
+            if os.path.isfile(ckpt_path):
+                files=[ckpt_path]
+            else:
+                files = os.listdir(ckpt_path)
             model_files = [f for f in files if f.endswith('.pth') or f.endswith('.ckpt')]
             if len(model_files) == 0:
                 download_model = True

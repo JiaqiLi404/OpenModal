@@ -7,10 +7,10 @@ language_module_map = {LanguagesEnum.ZH: chinese, LanguagesEnum.JP: japanese, La
                        LanguagesEnum.FR: french, LanguagesEnum.SP: spanish, LanguagesEnum.ES: spanish}
 
 
-def clean_text(text, language, ckpt_bert_dir):
+def clean_text(text, language, ckpt_bert_path):
     language_module = language_module_map[language]
     norm_text = language_module.text_normalize(text) if hasattr(language_module,"text_normalize") else text
-    phones, tones, word2ph = language_module.g2p(norm_text, ckpt_bert_dir) \
+    phones, tones, word2ph = language_module.g2p(norm_text, ckpt_bert_path) \
         if language == LanguagesEnum.ZH_MIX_EN or language == LanguagesEnum.ZH \
         else language_module.g2p(norm_text)
     return norm_text, phones, tones, word2ph

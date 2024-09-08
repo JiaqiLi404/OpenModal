@@ -20,9 +20,9 @@ def text_normalize(text):
     return text
 
 
-def g2p(text,ckpt_bert_dir='dbmdz/pretrained_bert-base-french-europeana-cased', pad_start_end=True, tokenized=None):
+def g2p(text,ckpt_bert_path='dbmdz/pretrained_bert-base-french-europeana-cased', pad_start_end=True, tokenized=None):
     if tokenized is None:
-        tokenizer = AutoTokenizer.from_pretrained(ckpt_bert_dir)
+        tokenizer = AutoTokenizer.from_pretrained(ckpt_bert_path)
         tokenized = tokenizer.tokenize(text)
     # import pdb; pdb.set_trace()
     phs = []

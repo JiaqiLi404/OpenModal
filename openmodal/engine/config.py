@@ -562,9 +562,9 @@ class Config:
         if fileExtname not in ['.json', '.yaml', '.yml']:
             raise OSError('Only yml/yaml/json type are supported now!')
         try:
-            with tempfile.TemporaryDirectory() as temp_config_dir:
+            with tempfile.TemporaryDirectory() as temp_config_path:
                 temp_config_file = tempfile.NamedTemporaryFile(
-                    dir=temp_config_dir, suffix=fileExtname, delete=False)
+                    dir=temp_config_path, suffix=fileExtname, delete=False)
                 if platform.system() == 'Windows':
                     temp_config_file.close()
 
@@ -618,8 +618,8 @@ class Config:
                 # will be converted to the `_scope_`.
                 Config._parse_scope(cfg_dict)
         except Exception as e:
-            if osp.exists(temp_config_dir):
-                shutil.rmtree(temp_config_dir)
+            if osp.exists(temp_config_path):
+                shutil.rmtree(temp_config_path)
             raise e
 
         cfg_text = filename + '\n'
@@ -723,12 +723,15 @@ class Config:
         return base_files
 
     @staticmethod
-    def _get_cfg_path(cfg_path: str,
+    def _get_cfg_path(cfg_name: str,
                       filename: str) -> Tuple[str, Optional[str]]:
         """Get the config path from the current or external package.
+        It will first find the config file in the same folder as the current config,
+        then find the config file based on the project root,
+        and finally find the config file regarding cfg_name as path.
 
         Args:
-            cfg_path (str): Relative path of config.
+            cfg_name (str): Relative config name.
             filename (str): The config file being parsed.
 
         Returns:
@@ -736,8 +739,15 @@ class Config:
             is not an external config, the scope will be `None`.
         """
         cfg_dir = osp.dirname(filename)
-        cfg_path = osp.join(cfg_dir, cfg_path)
-        return cfg_path, None
+        cfg_path = osp.join(cfg_dir, cfg_name)
+        if os.path.exists(cfg_path):
+            return cfg_path, None
+        cfg_dir=os.getcwd()
+        cfg_path = osp.join(cfg_dir, cfg_name)
+        if os.path.exists(cfg_path):
+            return cfg_path, None
+        return cfg_name, None
+
 
     @staticmethod
     def _merge_a_into_b(a: dict,

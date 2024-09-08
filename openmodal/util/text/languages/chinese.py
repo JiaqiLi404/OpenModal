@@ -70,10 +70,10 @@ def replace_punctuation(text):
     return replaced_text
 
 
-def g2p(text, ckpt_bert_dir='hfl/chinese-roberta-wwm-ext-large'):
+def g2p(text, ckpt_bert_path='hfl/chinese-roberta-wwm-ext-large'):
     pattern = r"(?<=[{0}])\s*".format("".join(punctuation))
     sentences = [i for i in re.split(pattern, text) if not re.match(r'^[\s\.,;:!?。，！？；：]*$', i)]
-    phones, tones, word2ph = _g2p(sentences, ckpt_bert_dir)
+    phones, tones, word2ph = _g2p(sentences, ckpt_bert_path)
     assert sum(word2ph) == len(phones)
     assert len(word2ph) == len(text)  # Sometimes it will crash,you can add a try-catch.
     phones = ["_"] + phones + ["_"]
@@ -95,7 +95,7 @@ def _get_initials_finals(word):
     return initials, finals
 
 
-def _g2p(segments, ckpt_bert_dir='hfl/chinese-roberta-wwm-ext-large', is_g2pw=True):
+def _g2p(segments, ckpt_bert_path='hfl/chinese-roberta-wwm-ext-large', is_g2pw=True):
     global g2pw
     phones_list = []
     tones_list = []
@@ -127,8 +127,8 @@ def _g2p(segments, ckpt_bert_dir='hfl/chinese-roberta-wwm-ext-large', is_g2pw=Tr
         else:
             # g2pw采用整句推理
             if g2pw is None:
-                g2pw = G2PWPinyin(model_dir="temp/G2PWModel/",
-                                  model_source=ckpt_bert_dir, v_to_u=False,
+                g2pw = G2PWPinyin(model_path="temp/G2PWModel/",
+                                  model_source=ckpt_bert_path, v_to_u=False,
                                   neutral_tone_with_five=True)
             pinyins = g2pw.lazy_pinyin(seg, neutral_tone_with_five=True, style=Style.TONE3)
 
