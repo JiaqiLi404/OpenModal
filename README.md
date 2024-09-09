@@ -148,3 +148,22 @@ flow:
     root: "data\audio"
   image_loader: "{{image_loader}}"
 ```
+
+
+## Guide for Specific Models
+
+#### [GPT-SoVITS](https://github.com/RVC-Boss/GPT-SoVITS): A Powerful Few-shot Text-to-Speech Tool with WebUI (config/voice_clone_GPT_SoVITS.yaml)
+
+symbols in GPT-SoVITS is different from ours and other common voice projects, so you need to export their symbols with their checkpoint,
+by adding the codes below.
+Or you can download our provided checkpoint.
+
+```python
+dict_s2 = torch.load(sovits_path, map_location="cpu")
+hps = dict_s2["config"]
+hps['symbols']=symbols
+# sovits_path_temp=sovits_path.replace(".pth","_symbols.pth")
+# torch.save(dict_s2, f"{sovits_path_temp}")
+```
+
+
