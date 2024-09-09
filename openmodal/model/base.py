@@ -21,8 +21,6 @@ class BaseModel(torch.nn.Module):
         if device is not None:
             self.device = device
 
-        if is_half:
-            self.half()
         self.is_half=is_half
 
 
@@ -53,7 +51,7 @@ class BaseModel(torch.nn.Module):
             else:
                 model_path = os.path.join(ckpt_path, model_files[0])
             config_files = [f for f in files if f.endswith('.json')]
-            if len(config_files) == 0 and (len(model_files) != 0 and not model_files[0].endswith('.ckpt')):
+            if len(config_files) == 0 and len(model_files) == 0:
                 download_config = True
             elif len(config_files) != 0:
                 config_path = os.path.join(ckpt_path, config_files[0])

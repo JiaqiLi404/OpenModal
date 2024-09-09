@@ -42,6 +42,8 @@ def build_module(name: str, cfg: Any, outer_built_modules: Dict[str, Any]) -> An
                     cfg[key] = getattr(library, library_name)
                 else:
                     raise KeyError(f"Library {value} not found")
+            elif isinstance(value, str) and value == "None":
+                cfg[key] = None
         module = MainBase.build(cfg)
     elif isinstance(cfg, str) and variable_rule.match(cfg):
         inner_name = cfg[2:-2].strip()
@@ -58,6 +60,8 @@ def build_module(name: str, cfg: Any, outer_built_modules: Dict[str, Any]) -> An
             module = getattr(library, library_name)
         else:
             raise KeyError(f"Library {cfg} not found")
+    elif isinstance(cfg, str) and cfg=="None":
+        module = None
     else:
         module = cfg
 

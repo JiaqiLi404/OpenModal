@@ -7,12 +7,15 @@ language_module_map = {LanguagesEnum.ZH: chinese, LanguagesEnum.JP: japanese, La
                        LanguagesEnum.FR: french, LanguagesEnum.SP: spanish, LanguagesEnum.ES: spanish}
 
 
-def clean_text(text, language, ckpt_bert_path):
+def clean_text(text, language, ckpt_bert_path,is_g2pw=True,is_g2pen=True):
     language_module = language_module_map[language]
     norm_text = language_module.text_normalize(text) if hasattr(language_module,"text_normalize") else text
-    phones, tones, word2ph = language_module.g2p(norm_text, ckpt_bert_path) \
-        if language == LanguagesEnum.ZH_MIX_EN or language == LanguagesEnum.ZH \
-        else language_module.g2p(norm_text)
+    if language == LanguagesEnum.ZH_MIX_EN or language == LanguagesEnum.ZH:
+        phones, tones, word2ph = language_module.g2p(norm_text, ckpt_bert_path,is_g2pw=is_g2pw)
+    elif language == LanguagesEnum.EN:
+        phones, tones, word2ph = language_module.g2p(norm_text, ckpt_bert_path,is_g2pen=is_g2pen)
+    else:
+        language_module.g2p(norm_text)
     return norm_text, phones, tones, word2ph
 
 
@@ -26,9 +29,11 @@ def cleaned_text_to_sequence(phones, tones, language, symbol_to_id=None,with_ton
     Returns:
       List of integers corresponding to the symbols in the audio
     """
-    if with_tone:
-        phones=[phones[i]+str(tones[i]) for i in range(len(phones))]
     symbol_to_id_map = symbol_to_id if symbol_to_id else _symbol_to_id
+    if with_tone:
+        if language==LanguagesEnum.EN:
+            phones=[x.upper() for x in phones]
+        phones=[phones[i]+str(tones[i]) if phones[i]+str(tones[i]) in symbol_to_id_map else phones[i] for i in range(len(phones))]
     phones = [symbol_to_id_map[symbol]if symbol in symbol_to_id_map else 'UNK' for symbol in phones]
     tone_start = language_tone_start_map[language]
     tones = [i + tone_start for i in tones]

@@ -622,14 +622,14 @@ if __name__ == "__main__":
     text = "こんにちは、世界！..."
     text = 'ええ、僕はおきなと申します。こちらの小さいわらべは杏子。ご挨拶が遅れてしまいすみません。あなたの名は?'
     text = 'あの、お前以外のみんなは、全員生きてること?'
-    from text.japanese_bert import get_bert_feature
-
-    text = text_normalize(text)
-    print(text)
-    phones, tones, word2ph = g2p(text)
-    bert = get_bert_feature(text, word2ph)
-
-    print(phones, tones, word2ph, bert.shape)
+    # from text.japanese_bert import get_bert_feature
+    #
+    # text = text_normalize(text)
+    # print(text)
+    # phones, tones, word2ph = g2p(text)
+    # bert = get_bert_feature(text, word2ph)
+    #
+    # print(phones, tones, word2ph, bert.shape)
 
 # if __name__ == '__main__':
 #     from pykakasi import kakasi

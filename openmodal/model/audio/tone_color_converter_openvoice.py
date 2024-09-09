@@ -8,6 +8,7 @@ from openmodal.engine import ModelBase
 from openmodal.component.audio.OpenVoiceSoVITS import OpenVoiceSoVITS
 from openmodal.model import BaseModel
 from openmodal.process.audio import speech_embedding
+from openmodal.util.torch import spectrogram_torch
 
 
 @ModelBase.register_module(name="OpenVoiceToneColorConverter")
@@ -165,45 +166,6 @@ class OpenVoiceToneColorConverter(BaseModel):
 
 
 hann_window = {}
-
-
-def spectrogram_torch(y, n_fft, sampling_rate, hop_size, win_size, center=False):
-    if torch.min(y) < -1.1:
-        print("min value is ", torch.min(y))
-    if torch.max(y) > 1.1:
-        print("max value is ", torch.max(y))
-
-    global hann_window
-    dtype_device = str(y.dtype) + "_" + str(y.device)
-    wnsize_dtype_device = str(win_size) + "_" + dtype_device
-    if wnsize_dtype_device not in hann_window:
-        hann_window[wnsize_dtype_device] = torch.hann_window(win_size).to(
-            dtype=y.dtype, device=y.device
-        )
-
-    y = torch.nn.functional.pad(
-        y.unsqueeze(1),
-        (int((n_fft - hop_size) / 2), int((n_fft - hop_size) / 2)),
-        mode="reflect",
-    )
-    y = y.squeeze(1)
-
-    spec = torch.stft(
-        y,
-        n_fft,
-        hop_length=hop_size,
-        win_length=win_size,
-        window=hann_window[wnsize_dtype_device],
-        center=center,
-        pad_mode="reflect",
-        normalized=False,
-        onesided=True,
-        return_complex=True,
-    )
-    spec = torch.view_as_real(spec)
-
-    spec = torch.sqrt(spec.real.pow(2).sum(-1) + 1e-6)
-    return spec
 
 
 def string_to_bits(string, pad_len=8):

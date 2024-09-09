@@ -4,7 +4,8 @@ import torch.nn as nn
 from torch.cuda.amp import autocast
 from torch.nn import functional as F
 
-from openmodal.block import attentions, MultiHeadAttention
+from openmodal.block import attentions
+from openmodal.block.attentions import MultiHeadAttentionLinear
 from openmodal.block.audio.audio_generator import AudioGenerator
 from openmodal.block.audio.multi_reference_timber_encoder import MRTE
 from openmodal.block.audio.posterior_encoder import PosteriorEncoder
@@ -53,7 +54,7 @@ class TextEncoder(nn.Module):
             n_layers // 2,
             kernel_size,
             p_dropout,
-            flow_version="layer"
+            flow_version=None
         )
 
         self.encoder_text = attentions.Encoder(
@@ -63,7 +64,7 @@ class TextEncoder(nn.Module):
             n_layers,
             kernel_size,
             p_dropout,
-            flow_version="layer"
+            flow_version=None
         )
 
 
@@ -76,7 +77,7 @@ class TextEncoder(nn.Module):
             n_layers // 2,
             kernel_size,
             p_dropout,
-            flow_version="layer"
+            flow_version=None
         )
 
 
@@ -159,7 +160,7 @@ class MelStyleEncoder(nn.Module):
             Conv1dGLU(self.hidden_dim, self.hidden_dim, self.kernel_size, self.dropout),
         )
 
-        self.slf_attn = MultiHeadAttention(
+        self.slf_attn = MultiHeadAttentionLinear(
             self.n_head,
             self.hidden_dim,
             self.hidden_dim // self.n_head,
@@ -381,10 +382,7 @@ class GPTSoVITS(nn.Module):
                 refer_mask = torch.unsqueeze(
                     sequence_mask(refer_lengths, refer.size(2)), 1
                 ).to(refer.dtype)
-                if (self.version == "v1"):
-                    ge = self.ref_enc(refer * refer_mask, refer_mask)
-                else:
-                    ge = self.ref_enc(refer[:, :704] * refer_mask, refer_mask)
+                ge = self.ref_enc(refer[:, :704] * refer_mask, refer_mask)
             return ge
         if(type(refer)==list):
             ges=[]

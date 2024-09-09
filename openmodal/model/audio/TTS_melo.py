@@ -131,7 +131,10 @@ class MeloTTS(BaseModel):
 
 
 def get_text_for_tts_infer(text, language_str, hps, ckpt_bert_path, device, symbol_to_id=None):
-    norm_text, phone, tone, word2ph = clean_text(text, language_str, ckpt_bert_path)
+    norm_text, phone, tone, word2ph = clean_text(text, language_str, ckpt_bert_path,is_g2pw=False)
+    phone = ["_"] + phone + ["_"]
+    tone = [0] + tone + [0]
+    word2ph = [1] + word2ph + [1]
     phone, tone, language = cleaned_text_to_sequence(phone, tone, language_str, symbol_to_id)
 
     if hps.data.add_blank:

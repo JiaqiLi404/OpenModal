@@ -24,7 +24,8 @@ The highlights are:
 - [x] [MeloTTS](https://github.com/myshell-ai/MeloTTS) TTS Model (config/tts.yaml).
 - [x] [OpenVoice](https://github.com/myshell-ai/OpenVoice) Instant voice cloning by MIT and MyShell (
   config/tts_voice_converter.yaml).
-- [ ] [GPT-SoVITS](https://github.com/RVC-Boss/GPT-SoVITS) A Powerful Few-shot Text-to-Speech Tool with WebUI.
+- [x] [GPT-SoVITS](https://github.com/RVC-Boss/GPT-SoVITS) A Powerful Few-shot Text-to-Speech Tool with WebUI(
+  config/voice_clone_GPT_SoVITS.yaml).
 
 ## Supporting Customizing Modules:
 

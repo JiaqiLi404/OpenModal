@@ -1,18 +1,14 @@
 import re
 from typing import Dict
 
-import librosa
 import torch
-import soundfile
-import numpy as np
-from tqdm import tqdm
+from AR.modules.lr_schedulers import WarmupCosineLRSchedule
+from AR.modules.optim import ScaledAdam
 from pytorch_lightning import LightningModule
 
 from openmodal.component.audio.text2Semantic_GPT_SoVITS import Text2SemanticDecoder
 from openmodal.engine import ModelBase
 from openmodal.model import BaseModel
-from openmodal.process.text.text_cleaner import clean_text, cleaned_text_to_sequence
-from openmodal.util.text import split_sentence
 from openmodal.util.text.languages.symbols import symbols as openmodal_symbols, \
     num_languages as openmodal_num_languages, language_tone_num_map
 from openmodal.view_object.text.languages import LanguagesEnum
@@ -33,6 +29,7 @@ class GPTSoVITS_TTS(BaseModel, LightningModule):
                  water_mark=None,
                  is_train=False,
                  is_half=True,
+                 symbols=None,
                  *args,
                  **kwargs):
         super().__init__(device=None, *args, **kwargs)
@@ -44,7 +41,8 @@ class GPTSoVITS_TTS(BaseModel, LightningModule):
 
             num_languages = hps.get('num_languages', openmodal_num_languages)
             num_tones = hps.get('num_tones', language_tone_num_map[language])
-            symbols = hps.get('symbols', openmodal_symbols)
+            if symbols is None:
+                symbols = hps.get('symbols', openmodal_symbols)
 
             model_dim = hps.model.get("hidden_dim", None)
             embedding_dim = hps.model.get("embedding_dim", None)
@@ -150,25 +148,46 @@ class GPTSoVITS_TTS(BaseModel, LightningModule):
     def validation_step(self, batch: Dict, batch_idx: int):
         return
 
-    @staticmethod
-    def audio_numpy_concat(segment_data_list, sr, speed=1.):
-        audio_segments = []
-        for segment_data in segment_data_list:
-            audio_segments += segment_data.reshape(-1).tolist()
-            audio_segments += [0] * int((sr * 0.05) / speed)
-        audio_segments = np.array(audio_segments).astype(np.float32)
-        return audio_segments
+    def configure_optimizers(self):
+        model_parameters = self.model.parameters()
+        parameters_names = []
+        parameters_names.append(
+            [name_param_pair[0] for name_param_pair in self.model.named_parameters()]
+        )
+        lm_opt = ScaledAdam(
+            model_parameters,
+            lr=0.01,
+            betas=(0.9, 0.95),
+            clipping_scale=2.0,
+            parameters_names=parameters_names,
+            show_dominant_parameters=False,
+            clipping_update_period=1000,
+        )
+
+        return {
+            "optimizer": lm_opt,
+            "lr_scheduler": {
+                "scheduler": WarmupCosineLRSchedule(
+                    lm_opt,
+                    init_lr=self.config["optimizer"]["lr_init"],
+                    peak_lr=self.config["optimizer"]["lr"],
+                    end_lr=self.config["optimizer"]["lr_end"],
+                    warmup_steps=self.config["optimizer"]["warmup_steps"],
+                    total_steps=self.config["optimizer"]["decay_steps"],
+                )
+            },
+        }
 
     def forward(self,
                 all_phoneme_ids,
                 all_phoneme_len,
                 prompts,
                 bert_feature,
-                top_k: int = -100,
-                top_p: int = 100,
+                top_k: int = 20,
+                top_p: float =0.6,
                 early_stop_num: int = -1,
                 temperature: float = 1.0,
                 repetition_penalty: float = 1.35,
                 **kwargs):
-        self.model.infer_panel_naive(all_phoneme_ids, all_phoneme_len, prompts, bert_feature, top_k,
+        return self.model.infer_panel_naive(all_phoneme_ids, all_phoneme_len, prompts, bert_feature, top_k,
                                      top_p, early_stop_num, temperature, repetition_penalty)

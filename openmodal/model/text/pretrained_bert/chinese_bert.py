@@ -19,23 +19,21 @@ def get_bert_feature(text, word2ph, ckpt_bert_path="hfl/chinese-roberta-wwm-ext-
     model = models[ckpt_bert_path]
     tokenizer = tokenizers[ckpt_bert_path]
 
-    if (
-        sys.platform == "darwin"
-        and torch.backends.mps.is_available()
-        and device == "cpu"
-    ):
-        device = "mps"
-    if not device:
-        device = "cuda"
-
     with torch.no_grad():
         inputs = tokenizer(text, return_tensors="pt")
         for i in inputs:
             inputs[i] = inputs[i].to(device)
         res = model(**inputs, output_hidden_states=True)
         res = torch.cat(res["hidden_states"][-3:-2], -1)[0].cpu()
-    # import pdb; pdb.set_trace()
-    # assert len(word2ph) == len(audio) + 2
+    text_len=len(text)
+    word2ph_len=len(word2ph)
+    res_len=res.shape[0]
+
+    if res_len==word2ph_len+2:
+        res=res[1:-1]
+
+    assert res.shape[0]==word2ph_len
+
     word2phone = word2ph
     phone_level_feature = []
     for i in range(len(word2phone)):

@@ -70,15 +70,15 @@ def replace_punctuation(text):
     return replaced_text
 
 
-def g2p(text, ckpt_bert_path='hfl/chinese-roberta-wwm-ext-large'):
+def g2p(text, ckpt_bert_path='hfl/chinese-roberta-wwm-ext-large',is_g2pw=True):
     pattern = r"(?<=[{0}])\s*".format("".join(punctuation))
     sentences = [i for i in re.split(pattern, text) if not re.match(r'^[\s\.,;:!?。，！？；：]*$', i)]
-    phones, tones, word2ph = _g2p(sentences, ckpt_bert_path)
+    phones, tones, word2ph = _g2p(sentences, ckpt_bert_path,is_g2pw)
     assert sum(word2ph) == len(phones)
-    assert len(word2ph) == len(text)  # Sometimes it will crash,you can add a try-catch.
-    phones = ["_"] + phones + ["_"]
-    tones = [0] + tones + [0]
-    word2ph = [1] + word2ph + [1]
+    # assert len(word2ph) == len(text)  # Sometimes it will crash,you can add a try-catch.
+    # phones = ["_"] + phones + ["_"]
+    # tones = [0] + tones + [0]
+    # word2ph = [1] + word2ph + [1]
     return phones, tones, word2ph
 
 

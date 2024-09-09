@@ -3,6 +3,8 @@ import numpy as np
 import soundfile
 import os
 import librosa
+import traceback
+import LangSegment
 
 from openmodal.component.audio.GPTSoVITS import GPTSoVITS
 from openmodal.component.audio.cnhubert import CNHubert
@@ -12,7 +14,11 @@ from openmodal.model.audio import GPTSoVITS_TTS
 from openmodal.model.text.pretrained_bert import get_bert
 from openmodal.process.audio import speech_embedding
 from openmodal.process.text.text_cleaner import clean_text, cleaned_text_to_sequence
+from openmodal.util.audio import load_audio
 from openmodal.util.text import split_sentence
+from openmodal.util.text.languages.symbols import symbols as openmodal_symbols
+from openmodal.util.torch import spectrogram_torch
+from openmodal.view_object.text.languages import LanguagesEnum
 
 
 @ModelBase.register_module(name="SoVITSToneColorConverter")
@@ -39,23 +45,31 @@ class SoVITSToneColorConverter(BaseModel):
 
         # load state_dict
         checkpoint_dict, hps = self.load_or_download_model(
-            f"{ckpt_path}/s2G2333k.pth", self.device)
+            f"{ckpt_path}/s2G2333k_symbols.pth", self.device)
+        hps.model.semantic_frame_rate = "25hz"
+
         self.hps = hps
+        self.symbols = hps.get("symbols", openmodal_symbols)
+        self.symbol_to_id = {s: i for i, s in enumerate(self.symbols)}
 
         self.tts_model = GPTSoVITS_TTS(
             language=language,
             ckpt_path=ckpt_path,
             ckpt_bert_path=ckpt_bert_path,
             is_train=is_train,
-            is_half=self.is_half
+            is_half=self.is_half,
+            symbols=self.symbols,
         )
         self.ssl_model = CNHubert(base_path=ckpt_hubert_path)
+
         self.vq_model = GPTSoVITS(
+            len(self.symbols),
             hps.data.filter_length // 2 + 1,
             hps.train.segment_size // hps.data.hop_length,
             n_speakers=hps.data.n_speakers,
             **hps.model
         )
+        self.vq_model.load_state_dict(checkpoint_dict)
 
         self.watermark = water_mark
 
@@ -70,49 +84,43 @@ class SoVITSToneColorConverter(BaseModel):
         else:
             self.eval()
         self.to(self.device) if self.device else None
+        self.half() if self.is_half else None
+
+        self.cache = {}
 
     def extract_se(self, ref_wav_path, sr=16000, min_sec=3, max_sec=30, se_save_path=None):
-        if isinstance(ref_wav_path, str):
-            ref_wav_list = [ref_wav_path]
-
-        gs = []
-        for fname in ref_wav_list:
-            with torch.no_grad() if not self.is_train else torch.enable_grad():
-                # load reference wav
-                ref_wav, sr = librosa.load(fname, sr=sr)
-                if (ref_wav.shape[0] > max_sec * sr or ref_wav.shape[0] < min_sec * sr):
-                    raise ValueError(f"Reference wav length should be between {min_sec} and {max_sec} seconds.")
-                ref_wav = torch.from_numpy(ref_wav)
-                # add zero wave
-                zero_wav = np.zeros(
-                    int(self.hps.data.sampling_rate * 0.3),
-                    dtype=np.float16 if self.is_half else np.float32,
-                )
-                zero_wav_torch = torch.from_numpy(zero_wav)
-                if self.is_half:
-                    ref_wav = ref_wav.half()
-                    zero_wav_torch = zero_wav_torch.half()
-                ref_wav = ref_wav.to(self.device)
-                zero_wav_torch = zero_wav_torch.to(self.device)
-                ref_wav = torch.cat([ref_wav, zero_wav_torch])
-                ssl_content = self.ssl_model.model(ref_wav.unsqueeze(0))[
-                    "last_hidden_state"
-                ].transpose(
-                    1, 2
-                )  # .float()
-                codes = self.vq_model.extract_latent(ssl_content)
-                prompt_semantic = codes[0, 0]
-                prompt = prompt_semantic.unsqueeze(0)
-                gs.append(prompt.detach())
-
-        gs = torch.stack(gs).mean(0)
+        with torch.no_grad() if not self.is_train else torch.enable_grad():
+            # load reference wav
+            ref_wav, sr = librosa.load(ref_wav_path, sr=sr)
+            if (ref_wav.shape[0] > max_sec * sr or ref_wav.shape[0] < min_sec * sr):
+                raise ValueError(f"Reference wav length should be between {min_sec} and {max_sec} seconds.")
+            ref_wav = torch.from_numpy(ref_wav)
+            # add zero wave
+            zero_wav = np.zeros(
+                int(self.hps.data.sampling_rate * 0.3),
+                dtype=np.float16 if self.is_half else np.float32,
+            )
+            zero_wav_torch = torch.from_numpy(zero_wav)
+            if self.is_half:
+                ref_wav = ref_wav.half()
+                zero_wav_torch = zero_wav_torch.half()
+            ref_wav = ref_wav.to(self.device)
+            zero_wav_torch = zero_wav_torch.to(self.device)
+            ref_wav = torch.cat([ref_wav, zero_wav_torch])
+            ssl_content = self.ssl_model.model(ref_wav.unsqueeze(0))[
+                "last_hidden_state"
+            ].transpose(
+                1, 2
+            )  # .float()
+            codes = self.vq_model.extract_latent(ssl_content)
+            prompt_semantic = codes[0, 0]
+            prompt = prompt_semantic.unsqueeze(0)
 
         if se_save_path is not None:
             os.makedirs(os.path.dirname(se_save_path), exist_ok=True)
-            torch.save(gs.cpu(), se_save_path)
+            torch.save(prompt.cpu(), se_save_path)
 
-        gs = gs.to(self.device)
-        return gs
+        return prompt
 
     def forward(self,
                 text,
@@ -123,51 +131,118 @@ class SoVITSToneColorConverter(BaseModel):
                 output_path=None,
                 tau=0.3,
                 source_sr=None,
+                use_cache=True,
+                speed=1,
+                top_k=15,
+                top_p=1,
+                temperature=1,
                 *args,
                 **kwargs):
         hps = self.hps
+        dtype = torch.float16 if self.is_half == True else torch.float32
 
-        # process the reference audio and text
-        prompt = self.extract_se(references_path)
+        with torch.no_grad() if not self.is_train else torch.enable_grad():
+            # process the input text
+            texts = split_sentence(text, language=self.language)
+            print(" > Text split to sentences.")
+            print('\n'.join(texts))
+            print(" > ===========================")
 
-        norm_text, phone, tone, word2ph = clean_text(text, self.language, self.ckpt_bert_path)
-        phone, tone, language = cleaned_text_to_sequence(phone, tone, self.language, self.symbol_to_id, with_tone=True)
-        bert = get_bert(norm_text, word2ph, self.language, self.ckpt_bert_path, self.device)
-        phone = torch.LongTensor(phone)
-        tone = torch.LongTensor(tone)
-        language = torch.LongTensor(language)
+            # process the reference audio and text
+            if isinstance(references_path, str):
+                references_path = [references_path]
+            prompt = self.extract_se(references_path[0])
 
-        # process the input text
-        norm_text, phone, tone, word2ph = clean_text(text, self.language, self.ckpt_bert_path)
-        phone, tone, language = cleaned_text_to_sequence(phone, tone, self.language, self.symbol_to_id,with_tone=True)
-        bert = get_bert(norm_text, word2ph, self.language, self.ckpt_bert_path, self.device)
-        phone = torch.LongTensor(phone)
-        tone = torch.LongTensor(tone)
-        language = torch.LongTensor(language)
+            if reference_text is not None:
+                norm_text_ref, phone_ref, tone_ref, word2ph_ref = clean_text(reference_text, reference_language,
+                                                                             self.ckpt_bert_path)
+                phone_ref, tone_ref, language_ref = cleaned_text_to_sequence(phone_ref, tone_ref, reference_language,
+                                                                             self.symbol_to_id, with_tone=True)
+                bert_ref = get_bert(norm_text_ref, word2ph_ref, reference_language, self.ckpt_bert_path, self.device).to(
+                    dtype)
+                phone_ref = torch.LongTensor(phone_ref)
+                tone_ref = torch.LongTensor(tone_ref)
+                language_ref = torch.LongTensor(language_ref)
 
-        texts = split_sentence(text, language=self.language)
-        print(" > Text split to sentences.")
-        print('\n'.join(texts))
-        print(" > ===========================")
+            audio_opt = []
+            for i_text, text in enumerate(texts):
+                bert_text, phone_text, norm_text_text = self.automatic_get_bert(text)
+                # norm_text_text, phone_text, tone_text, word2ph_text = clean_text(text, self.language, self.ckpt_bert_path)
+                # phone_text, tone_text, language_text = cleaned_text_to_sequence(phone_text, tone_text, self.language, self.symbol_to_id,with_tone=True)
+                # bert_text = get_bert(norm_text_text, word2ph_text, self.language, self.ckpt_bert_path, self.device).to(dtype)
+                # phone_text = torch.LongTensor(phone_text)
+                # tone_text = torch.LongTensor(tone_text)
+                # language_text = torch.LongTensor(language_text)
+                all_phoneme_ids = torch.LongTensor(phone_text).to(self.device).unsqueeze(0)
 
-        with torch.no_grad():
-            y = torch.FloatTensor(audio).to(self.device)
-            y = y.unsqueeze(0)
-            spec = spectrogram_torch(y, hps.data.filter_length,
-                                     hps.data.sampling_rate, hps.data.hop_length, hps.data.win_length,
-                                     center=False).to(self.device)
-            spec_lengths = torch.LongTensor([spec.size(-1)]).to(self.device)
-            speaker_key = speaker.lower().replace('_', '-')
-            src_se = torch.load(f"{self.ckpt_converter_path}/base_speakers/ses/{speaker_key}.pth",
-                                map_location=self.device)
-            audio = self.model.voice_conversion(spec, spec_lengths, sid_src=src_se, sid_tgt=target_se, tau=tau)[0][
-                0, 0].data.cpu().float().numpy()
+                if reference_text is not None:
+                    # combine the reference audio and text
+                    bert = torch.cat([bert_ref, bert_text], dim=1)
+                    all_phoneme_ids = torch.cat([torch.LongTensor(phone_ref).to(self.device).unsqueeze(0), all_phoneme_ids],
+                                                dim=1)
+
+                bert = bert.to(dtype).to(self.device).unsqueeze(0)
+                all_phoneme_len = torch.tensor([all_phoneme_ids.shape[-1]]).to(self.device)
+
+                if (i_text in self.cache and use_cache):
+                    pred_semantic = self.cache[i_text]
+                else:
+                    pred_semantic, idx = self.tts_model.forward(
+                        all_phoneme_ids,
+                        all_phoneme_len,
+                        prompt if reference_text is not None else None,
+                        bert,
+                        # prompt_phone_len=ph_offset,
+                        top_k=top_k,
+                        top_p=top_p,
+                        temperature=temperature,
+                        early_stop_num=50 * self.tts_model.hps.data.max_sec,
+                    )
+                    pred_semantic = pred_semantic[:, -idx:].unsqueeze(0)
+                    self.cache[i_text] = pred_semantic if use_cache else None
+
+                refers = []
+                for filename in references_path:
+                    try:
+                        audio = load_audio(filename, int(hps.data.sampling_rate))
+                        audio = torch.FloatTensor(audio)
+                        maxx = audio.abs().max()
+                        if (maxx > 1): audio /= min(2, maxx)
+                        audio_norm = audio
+                        audio_norm = audio_norm.unsqueeze(0)
+                        refer = spectrogram_torch(
+                            audio_norm,
+                            hps.data.filter_length,
+                            hps.data.sampling_rate,
+                            hps.data.hop_length,
+                            hps.data.win_length,
+                            center=False,
+                        )
+                        refer = refer.to(dtype).to(self.device)
+                        refers.append(refer)
+                    except:
+                        traceback.print_exc()
+                audio = (
+                self.vq_model.decode(pred_semantic, torch.LongTensor(phone_text).to(self.device).unsqueeze(0), refers,
+                                     speed=speed).detach().cpu().numpy()[0, 0])
+                max_audio = np.abs(audio).max()  # 简单防止16bit爆音
+                if max_audio > 1: audio /= max_audio
+                audio_opt.append(audio)
+                zero_wav = np.zeros(
+                    int(self.hps.data.sampling_rate * 0.3),
+                    dtype=np.float16 if self.is_half else np.float32,
+                )
+                audio_opt.append(zero_wav)
+
+            audio = (np.concatenate(audio_opt, 0) * 32768).astype(np.int16)
+
             if self.watermark is not None:
                 audio = self.add_watermark(audio, self.watermark)
             if output_path is None:
                 return audio
             else:
                 soundfile.write(output_path, audio, hps.data.sampling_rate)
+            return audio
 
     def add_watermark(self, audio, message):
         if self.watermark_model is None:
@@ -211,47 +286,36 @@ class SoVITSToneColorConverter(BaseModel):
         message = bits_to_string(bits)
         return message
 
+    def automatic_get_bert(self, text):
+        dtype = torch.float16 if self.is_half == True else torch.float32
+        textlist = []
+        langlist = []
+        LangSegment.setfilters(["zh", "ja", "en", "ko"])
+        for tmp in LangSegment.getTexts(text):
+            langlist.append(tmp["lang"])
+            textlist.append(tmp["text"])
+        phones_list = []
+        bert_list = []
+        norm_text_list = []
+        for i in range(len(textlist)):
+            lang = LanguagesEnum.from_str(langlist[i])
+            norm_text, phone, tone, word2ph = clean_text(textlist[i], lang, self.ckpt_bert_path, is_g2pw=True,
+                                                         is_g2pen=False)
+            # with_tone=lang==LanguagesEnum.ZH or lang==LanguagesEnum.ZH_MIX_EN or lang==LanguagesEnum.ZH_CA
+            phone, tone, language = cleaned_text_to_sequence(phone, tone, lang, self.symbol_to_id, with_tone=True)
+            bert = get_bert(norm_text, word2ph, lang, self.ckpt_bert_path, self.device).to(dtype)
+            # phone = torch.LongTensor(phone)
+            # tone = torch.LongTensor(tone)
+            # language = torch.LongTensor(language)
+            # all_phoneme_ids = torch.LongTensor(phone).to(self.device).unsqueeze(0)
 
-hann_window = {}
-
-
-def spectrogram_torch(y, n_fft, sampling_rate, hop_size, win_size, center=False):
-    if torch.min(y) < -1.1:
-        print("min value is ", torch.min(y))
-    if torch.max(y) > 1.1:
-        print("max value is ", torch.max(y))
-
-    global hann_window
-    dtype_device = str(y.dtype) + "_" + str(y.device)
-    wnsize_dtype_device = str(win_size) + "_" + dtype_device
-    if wnsize_dtype_device not in hann_window:
-        hann_window[wnsize_dtype_device] = torch.hann_window(win_size).to(
-            dtype=y.dtype, device=y.device
-        )
-
-    y = torch.nn.functional.pad(
-        y.unsqueeze(1),
-        (int((n_fft - hop_size) / 2), int((n_fft - hop_size) / 2)),
-        mode="reflect",
-    )
-    y = y.squeeze(1)
-
-    spec = torch.stft(
-        y,
-        n_fft,
-        hop_length=hop_size,
-        win_length=win_size,
-        window=hann_window[wnsize_dtype_device],
-        center=center,
-        pad_mode="reflect",
-        normalized=False,
-        onesided=True,
-        return_complex=True,
-    )
-    spec = torch.view_as_real(spec)
-
-    spec = torch.sqrt(spec.real.pow(2).sum(-1) + 1e-6)
-    return spec
+            phones_list.append(phone)
+            norm_text_list.append(norm_text)
+            bert_list.append(bert)
+        bert = torch.cat(bert_list, dim=1)
+        phones = sum(phones_list, [])
+        norm_text = ''.join(norm_text_list)
+        return bert, phones, norm_text
 
 
 def string_to_bits(string, pad_len=8):
