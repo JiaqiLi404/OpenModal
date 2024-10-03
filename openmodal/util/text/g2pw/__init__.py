@@ -1,1 +1,1 @@
-from text.g2pw.g2pw import *
+from openmodal.util.text.g2pw.g2pw import *

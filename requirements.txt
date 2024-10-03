@@ -1,0 +1,32 @@
+numpy==2.0
+scipy
+tensorboard
+ffmpeg-python
+tqdm
+gruut
+huggingface_hub
+transformers
+soundfile
+librosa
+numba
+gruut
+g2p_en
+wordsegment
+mecab-python3
+unidic-lite
+cn2an
+pypinyin
+jieba
+onnxruntime; sys_platform == 'darwin'
+onnxruntime-gpu; sys_platform != 'darwin'
+opencc
+anyascii
+jamo
+g2pkk
+pydub
+faster_whisper
+whisper_timestamped
+funasr
+pytorch-lightning
+LangSegment
+

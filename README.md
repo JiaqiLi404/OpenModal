@@ -47,6 +47,7 @@ The highlights are:
 For model users, you only need look once at the configs and our registries (which stores all the supported modules on our platform),
 and customize your ideal configs. Then you could your config by running:
 ```shell
+cd openmodal (The package will be installable in the future)
 python openmodal/run.py --config config/xxx.yaml
 ```
 

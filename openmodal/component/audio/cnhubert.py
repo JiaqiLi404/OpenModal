@@ -16,7 +16,6 @@ from transformers import (
     HubertModel,
 )
 
-import utils
 import torch.nn as nn
 
 
@@ -98,8 +97,8 @@ def get_content(hmodel, wav_16k_tensor):
 if __name__ == "__main__":
     model = get_model()
     src_path = "/Users/Shared/原音频2.wav"
-    wav_16k_tensor = utils.load_wav_to_torch_and_resample(src_path, 16000)
-    model = model
-    wav_16k_tensor = wav_16k_tensor
-    feats = get_content(model, wav_16k_tensor)
-    print(feats.shape)
+    # wav_16k_tensor = utils.load_wav_to_torch_and_resample(src_path, 16000)
+    # model = model
+    # wav_16k_tensor = wav_16k_tensor
+    # feats = get_content(model, wav_16k_tensor)
+    # print(feats.shape)

@@ -54,7 +54,7 @@ class ManagerMeta(type):
 
 class ManagerMixin(metaclass=ManagerMeta):
     """``ManagerMixin`` is the base class for classes that have global access
-    requirements.
+    requirements.txt.
 
     The subclasses inheriting from ``ManagerMixin`` can get their
     global instances.

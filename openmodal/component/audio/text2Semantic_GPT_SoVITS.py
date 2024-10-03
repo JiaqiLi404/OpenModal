@@ -3,22 +3,21 @@ from typing import List, Optional
 import torch
 from tqdm import tqdm
 
-from AR.models.utils import make_pad_mask
-from AR.models.utils import (
+
+from torch import nn
+from torch.nn import functional as F
+from torchmetrics.classification import MulticlassAccuracy
+
+# from openmodal.block.embedding import TokenEmbedding, SinePositionalEmbedding
+# from openmodal.block.transformer import TransformerEncoder, TransformerEncoderLayer, LayerNorm
+from openmodal.util.torch import make_pad_mask
+from openmodal.util.torch import (
     topk_sampling,
     sample,
     dpo_loss,
     make_reject_y,
     get_batch_logps
 )
-from AR.modules.embedding import SinePositionalEmbedding
-from AR.modules.embedding import TokenEmbedding
-from AR.modules.transformer import LayerNorm
-from AR.modules.transformer import TransformerEncoder
-from AR.modules.transformer import TransformerEncoderLayer
-from torch import nn
-from torch.nn import functional as F
-from torchmetrics.classification import MulticlassAccuracy
 
 
 class Text2SemanticDecoder(nn.Module):

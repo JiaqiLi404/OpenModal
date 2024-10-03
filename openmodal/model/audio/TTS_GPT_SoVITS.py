@@ -2,10 +2,10 @@ import re
 from typing import Dict
 
 import torch
-from AR.modules.lr_schedulers import WarmupCosineLRSchedule
-from AR.modules.optim import ScaledAdam
 from pytorch_lightning import LightningModule
 
+from openmodal.block.lr_schedulers import WarmupCosineLRSchedule
+from openmodal.block.optim import ScaledAdam
 from openmodal.component.audio.text2Semantic_GPT_SoVITS import Text2SemanticDecoder
 from openmodal.engine import ModelBase
 from openmodal.model import BaseModel
