@@ -15,7 +15,7 @@ from torch import Tensor
 from torch.nn import functional as F
 from torch.nn.modules.transformer import _get_activation_fn
 
-from openmodal.block.activation import MultiheadAttention
+from openmodal.block.attentions import MultiheadAttention2
 from openmodal.block.scaling import BalancedDoubleSwish
 
 _shape_t = Union[int, List[int], torch.Size]
@@ -209,7 +209,7 @@ class TransformerEncoderLayer(nn.Module):
         # print(233333333333,d_model,nhead)
         # import os
         # os._exit(2333333)
-        self.self_attn = MultiheadAttention(
+        self.self_attn = MultiheadAttention2(
             d_model,  # 512 16
             nhead,
             dropout=dropout,

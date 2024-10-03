@@ -1,4 +1,5 @@
 numpy==2.0
+torch
 scipy
 tensorboard
 ffmpeg-python
