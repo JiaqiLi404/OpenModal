@@ -1,0 +1,16 @@
+converter-model:
+  type: SoVITSToneColorConverter
+  ckpt_path: "F:\\Models\\GPT-SoVITS-TTS"
+  ckpt_bert_path: "F:\\Models\\chinese-roberta-wwm-ext-large-gpt-sovits"
+  ckpt_hubert_path: "F:\\Models\\chinese-hubert-base"
+  ckpt_whisper_path: "F:\\Models\\faster-distil-whisper-large-v3"
+  water_mark: None
+  language: "ZH"
+  is_half: True
+
+
+flow:
+  type: TTSToneColorConverterFlow
+  tts_flow: None
+  converter_model: "{{converter-model}}"
+  output_path: "output"

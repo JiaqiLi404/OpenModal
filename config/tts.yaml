@@ -1,0 +1,25 @@
+tts-model:
+  type: MeloTTS
+  #  ZH: bert-base-multilingual-uncased or hfl/chinese-roberta-wwm-ext-large
+  #  EN: pretrained_bert-base-uncased
+  #  JP: tohoku-nlp/bert-base-japanese-v3
+  #  KO: kykim/bert-kor-base
+  #  SP: dccuchile/bert-base-spanish-wwm-uncased
+  #  FR: dbmdz/pretrained_bert-base-french-europeana-cased
+  language: "ZH"
+  ckpt_bert_path: "F:\\Models\\bert-base-multilingual-uncased"
+  # ZH: 'myshell-ai/MeloTTS-Chinese'
+  # EN: 'myshell-ai/MeloTTS-English-v3'
+  # JP: 'myshell-ai/MeloTTS-Japanese'
+  # KR: 'myshell-ai/MeloTTS-Korean'
+  # SP: 'myshell-ai/MeloTTS-Spanish'
+  # FR: 'myshell-ai/MeloTTS-French'
+  ckpt_path: "F:\\Models\\MeloTTS-Chinese"
+
+
+flow:
+  type: TTSFlow
+  tts_model: "{{tts-model}}"
+  ckpt_path: "E:\\Projects\\GenHuman\\OpenVoice\\checkpoints_v2"
+  speaker: None
+  output_path: "output"

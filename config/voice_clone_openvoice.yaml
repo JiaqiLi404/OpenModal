@@ -1,0 +1,22 @@
+_base_: tts.yaml
+
+tts-flow:
+  type: TTSFlow
+  tts_model: "{{tts-model}}"
+  speaker: None
+  output_path: "output\\tmp"
+
+converter-model:
+  type: OpenVoiceToneColorConverter
+  ckpt_converter_path: "E:\\Projects\\GenHuman\\OpenVoice\\checkpoints_v2"
+  ckpt_whisper_path: "F:\\Models\\faster-distil-whisper-large-v3"  #"medium"
+  water_mark: "OpenModal"
+  is_train: False
+
+
+flow:
+  _delete_: True
+  type: TTSToneColorConverterFlow
+  tts_flow: "{{tts-flow}}"
+  converter_model: "{{converter-model}}"
+  output_path: "output"

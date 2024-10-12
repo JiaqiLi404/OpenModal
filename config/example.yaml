@@ -1,0 +1,8 @@
+_base_: base.yaml
+model:
+  type: BaseModel
+  num: "{{age}}"
+
+flow:
+  type: BaseFlow
+  model: "{{model}}"
