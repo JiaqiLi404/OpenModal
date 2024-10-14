@@ -8,8 +8,8 @@ from torch import nn
 from torch.nn import functional as F
 from torchmetrics.classification import MulticlassAccuracy
 
-# from openmodal.block.embedding import TokenEmbedding, SinePositionalEmbedding
-# from openmodal.block.transformer import TransformerEncoder, TransformerEncoderLayer, LayerNorm
+from openmodal.block.embedding import TokenEmbedding, SinePositionalEmbedding
+from openmodal.block.transformer import TransformerEncoder, TransformerEncoderLayer, LayerNorm
 from openmodal.util.torch import make_pad_mask
 from openmodal.util.torch import (
     topk_sampling,

@@ -155,9 +155,9 @@ flow:
 
 #### [GPT-SoVITS](https://github.com/RVC-Boss/GPT-SoVITS): A Powerful Few-shot Text-to-Speech Tool with WebUI (config/voice_clone_GPT_SoVITS.yaml)
 
-symbols in GPT-SoVITS is different from ours and other common voice projects, so you need to export their symbols with their checkpoint,
+Symbols in GPT-SoVITS is different from ours and other common voice projects, so you need to export their symbols with their checkpoint,
 by adding the codes below.
-Or you can download our provided checkpoint.
+Or you can download our provided checkpoint at [Onedrive]().
 
 ```python
 dict_s2 = torch.load(sovits_path, map_location="cpu")
@@ -166,5 +166,13 @@ hps['symbols']=symbols
 # sovits_path_temp=sovits_path.replace(".pth","_symbols.pth")
 # torch.save(dict_s2, f"{sovits_path_temp}")
 ```
+
+The original pretrained weights of GPT-SoVITS are provided by the original authors at [hugging face](https://huggingface.co/lj1995/GPT-SoVITS/tree/main).
+
+By running the following command, you could clone the voice by GPT-SoVITS:
+```shell
+python openmodal/run.py --config config/voice_clone_GPT_SoVITS.yaml
+```
+
 
 

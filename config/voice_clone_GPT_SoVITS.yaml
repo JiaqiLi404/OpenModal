@@ -1,9 +1,9 @@
 converter-model:
   type: SoVITSToneColorConverter
-  ckpt_path: "F:\\Models\\GPT-SoVITS-TTS"
-  ckpt_bert_path: "F:\\Models\\chinese-roberta-wwm-ext-large-gpt-sovits"
-  ckpt_hubert_path: "F:\\Models\\chinese-hubert-base"
-  ckpt_whisper_path: "F:\\Models\\faster-distil-whisper-large-v3"
+  ckpt_path: "E:\\Models\\GPT-SoVITS-TTS"
+  ckpt_bert_path: "E:\\Models\\chinese-roberta-wwm-ext-large-gpt-sovits"
+  ckpt_hubert_path: "E:\\Models\\chinese-hubert-base"
+  ckpt_whisper_path: "E:\\Models\\faster-distil-whisper-large-v3"
   water_mark: None
   language: "ZH"
   is_half: True
