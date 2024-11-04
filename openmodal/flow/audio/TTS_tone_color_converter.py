@@ -4,6 +4,7 @@ from tqdm import tqdm
 
 from openmodal.engine import ModelBase
 from openmodal.flow import BaseFlow
+from openmodal.process.preprocess import nltk
 from openmodal.view_object.text.languages import LanguagesEnum
 
 
@@ -26,6 +27,9 @@ class TTSToneColorConverterFlow(BaseFlow):
         self.converter_model = converter_model
         self.output_path = output_path
         self.output_format = output_format
+        nltk.check_nltk(['averaged_perceptron_tagger_eng'])
+
+
 
     def run(self):
         texts = [
